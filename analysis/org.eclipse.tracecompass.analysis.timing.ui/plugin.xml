@@ -14,6 +14,17 @@
                class="org.eclipse.tracecompass.tmf.core.trace.TmfTrace">
          </tracetype>
       </module>
+      <module
+            analysis_module="org.eclipse.tracecompass.internal.analysis.timing.ui.callgraph.CallGraphStatisticsAnalysisUI"
+            automatic="false"
+            icon="icons/elcl16/statistics_view.gif"
+            id="org.eclipse.tracecompass.internal.analysis.timing.ui.callgraph.callgraphanalysis.statistics"
+            name="%callgraph.statistics.analysis">
+         <tracetype
+               applies="true"
+               class="org.eclipse.tracecompass.tmf.core.trace.TmfTrace">
+         </tracetype>
+      </module>
       <output
             class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
             id="org.eclipse.tracecompass.internal.analysis.timing.ui.callgraph.callgraphDensity">
@@ -24,6 +35,13 @@
       <output
             class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
             id="org.eclipse.tracecompass.internal.analysis.timing.ui.flamegraph.flamegraphView">
+         <analysisModuleClass
+               class="org.eclipse.tracecompass.internal.analysis.timing.ui.callgraph.CallGraphAnalysisUI">
+         </analysisModuleClass>
+      </output>
+      <output
+            class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
+            id="org.eclipse.tracecompass.internal.analysis.timing.ui.callgraph.statistics.callgraphStatistics">
          <analysisModuleClass
                class="org.eclipse.tracecompass.internal.analysis.timing.ui.callgraph.CallGraphAnalysisUI">
          </analysisModuleClass>
@@ -54,6 +72,14 @@
             icon="icons/eview16/latency.png"
             id="org.eclipse.tracecompass.analysis.timing.ui.segstore.table"
             name="%view.segstore.table"
+            restorable="true">
+      </view>
+      <view
+            category="org.eclipse.linuxtools.tmf.ui.views.category"
+            class="org.eclipse.tracecompass.internal.analysis.timing.ui.callgraph.statistics.CallGraphStatisticsView"
+            icon="icons/elcl16/statistics_view.gif"
+            id="org.eclipse.tracecompass.internal.analysis.timing.ui.callgraph.statistics.callgraphStatistics"
+            name="%view.function.statistics"
             restorable="true">
       </view>
    </extension>
