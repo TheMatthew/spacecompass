@@ -11,5 +11,26 @@
             trace_type="org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace">
       </type>
    </extension>
+   <extension
+         point="org.eclipse.linuxtools.tmf.core.analysis">
+      <module
+            analysis_module="org.eclipse.tracecompass.internal.analysis.chromium.core.callstack.ChromiumCallstackAnalysis"
+            automatic="true"
+            id="org.eclipse.tracecompass.analysis.chromium.callstack"
+            name="Chromium Callstack">
+         <tracetype
+               applies="true"
+               class="org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace">
+         </tracetype>
+      </module>
+      <output
+            class="org.eclipse.tracecompass.analysis.chromium.core.AnalysisOutput2"
+            id="org.eclipse.tracecompass.analysis.chromium.callstack">
+      </output>
+      <output
+            class="org.eclipse.tracecompass.analysis.chromium.core.AnalysisOutput2"
+            id="org.eclipse.tracecompass.analysis.chromium.callstack">
+      </output>
+   </extension>
 
 </plugin>
