@@ -18,19 +18,20 @@
             automatic="true"
             id="org.eclipse.tracecompass.analysis.chromium.callstack"
             name="Chromium Callstack">
+              <tracetype
+               applies="true"
+               class="org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace">
+         </tracetype>
+	</module>
+      <module
+            analysis_module="org.eclipse.tracecompass.internal.analysis.chromium.core.statistics.ChromiumStatisticsAnalysis"
+            id="org.eclipse.tracecompass.internal.analysis.chromium.core.statistics.analysis"
+            name="Chromium Statistics">
          <tracetype
                applies="true"
                class="org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace">
          </tracetype>
       </module>
-      <output
-            class="org.eclipse.tracecompass.analysis.chromium.core.AnalysisOutput2"
-            id="org.eclipse.tracecompass.analysis.chromium.callstack">
-      </output>
-      <output
-            class="org.eclipse.tracecompass.analysis.chromium.core.AnalysisOutput2"
-            id="org.eclipse.tracecompass.analysis.chromium.callstack">
-      </output>
    </extension>
 
 </plugin>
