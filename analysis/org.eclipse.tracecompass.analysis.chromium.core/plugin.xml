@@ -32,6 +32,23 @@
                class="org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace">
          </tracetype>
       </module>
+      <output
+            class="org.eclipse.tracecompass.tmf.ui.analysis.TmfAnalysisViewOutput"
+            id="org.eclipse.tracecompass.internal.analysis.chromium.core.statistics.view">
+         <analysisModuleClass
+               class="org.eclipse.tracecompass.internal.analysis.chromium.core.statistics.ChromiumStatisticsAnalysis">
+         </analysisModuleClass>
+      </output>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            category="org.eclipse.linuxtools.tmf.ui.views.category"
+            class="org.eclipse.tracecompass.internal.analysis.chromium.core.statistics.ChromiumStatisticsView"
+            id="org.eclipse.tracecompass.internal.analysis.chromium.core.statistics.view"
+            name="Chromium Statistics"
+            restorable="true">
+      </view>
    </extension>
 
 </plugin>
