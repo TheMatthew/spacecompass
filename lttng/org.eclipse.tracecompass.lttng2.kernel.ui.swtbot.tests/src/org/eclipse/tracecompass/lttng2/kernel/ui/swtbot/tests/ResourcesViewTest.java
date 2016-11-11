@@ -414,7 +414,6 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         TmfTimeRange range = new TmfTimeRange(START_TIME, START_TIME.normalize(1000000L, ITmfTimestamp.NANOSECOND_SCALE));
         TmfSignalManager.dispatchSignal(new TmfWindowRangeUpdatedSignal(this, range));
         timeGraphIsReadyCondition(new TmfTimeRange(START_TIME, START_TIME), START_TIME);
-
         SWTBotToolbarButton filterButton = getViewBot().toolbarButton("Show View Filters");
         filterButton.click();
         fBot.waitUntil(org.eclipse.swtbot.swt.finder.waits.Conditions.shellIsActive("Filter"));
