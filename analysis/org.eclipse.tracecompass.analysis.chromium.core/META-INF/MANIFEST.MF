@@ -21,7 +21,8 @@ Export-Package: org.eclipse.tracecompass.analysis.chromium.core.trace,
  org.eclipse.tracecompass.internal.analysis.chromium.core;x-internal:=true,
  org.eclipse.tracecompass.internal.analysis.chromium.core.callstack;x-internal:=true,
  org.eclipse.tracecompass.internal.analysis.chromium.core.event;x-internal:=true
-Import-Package: com.google.common.annotations,
+Import-Package: 
+ com.google.common.annotations,
  com.google.common.base,
  com.google.common.collect,
  org.apache.commons.lang3;version="3.1.0",
