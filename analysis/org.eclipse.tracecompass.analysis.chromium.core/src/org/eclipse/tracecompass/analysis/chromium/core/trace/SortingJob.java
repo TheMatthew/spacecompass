@@ -23,7 +23,7 @@ final class SortingJob extends Job {
     private static final class Pair implements Comparable<Pair> {
         public Pair(String string, int i) {
             line = string;
-            String key = "\"ts\":";
+            String key = "\"ts\":"; //$NON-NLS-1$
             int index = string.indexOf(key) + key.length();
             int end = string.indexOf(',', index);
             String number = string.substring(index, end);

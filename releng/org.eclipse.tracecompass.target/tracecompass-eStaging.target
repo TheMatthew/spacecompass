@@ -68,15 +68,10 @@
 </location>
 <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="com.google.guava" version="15.0.0.v201403281430"/>
-<unit id="com.fasterxml.jackson.dataformat.jackson-dataformat-yaml" version="2.5.0.v201504151636"/>
 <unit id="org.apache.commons.io" version="2.2.0.v201405211200"/>
 <unit id="org.apache.derby" version="10.11.1.1_v201605202053"/>
 <unit id="org.apache.commons.compress" version="1.6.0.v201310281400"/>
 <unit id="org.json" version="1.0.0.v201011060100"/>
-<unit id="com.fasterxml.jackson.core.jackson-databind" version="2.5.0.v201504151636"/>
-<unit id="org.codehaus.jackson.core" version="1.6.0.v20101005-0925"/>
-<unit id="com.fasterxml.jackson.datatype.jackson-datatype-guava" version="2.5.0.v201504151636"/>
-<unit id="com.fasterxml.jackson.core.jackson-core" version="2.5.0.v201504151636"/>
 <repository location="http://download.eclipse.org/tools/orbit/downloads/drops/R20160520211859/repository/"/>
 </location>
 </locations>
