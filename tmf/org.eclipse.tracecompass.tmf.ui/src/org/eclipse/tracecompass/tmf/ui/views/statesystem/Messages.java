@@ -33,7 +33,15 @@ public class Messages extends NLS {
     /**
      * Private constructor (static class)
      */
-    private Messages() {}
+    private Messages() {
+    }
+
+    /**
+     * Label for the "duration" column
+     *
+     * @since 2.2
+     */
+    public static String DurationColumnLabel;
 
     /** Label for the first column */
     public static String TreeNodeColumnLabel;
@@ -77,7 +85,10 @@ public class Messages extends NLS {
     /** Label for the type String */
     public static String TypeString;
 
-    /** Label for the type Custom
-     * @since 2.0 */
+    /**
+     * Label for the type Custom
+     *
+     * @since 2.0
+     */
     public static String TypeCustom;
 }
