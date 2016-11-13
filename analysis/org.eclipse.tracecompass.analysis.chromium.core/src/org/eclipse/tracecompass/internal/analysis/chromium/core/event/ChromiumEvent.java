@@ -10,27 +10,14 @@ import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimestamp;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-
 public final class ChromiumEvent extends TmfEvent {
 
     public ChromiumEvent(ITmfTrace trace, long rank, ITmfTimestamp ts, ITmfEventType type, ChromiumFields content) {
         super(trace, rank, ts, type, content);
     }
 
-    public static void skip(long number, JsonParser jsonParser) throws JsonParseException, IOException {
-        for (long i = 0; i < number; i++) {
-            JsonToken token = jsonParser.nextToken();
-            while (!token.equals(JsonToken.END_OBJECT)) {
-                token = jsonParser.nextToken();
-            }
-        }
-    }
-
-    public static ITmfEvent parse(ITmfTrace trace, long rank, JsonParser jsonParser)
-            throws JsonParseException, IOException {
+    public static ITmfEvent parse(ITmfTrace trace, long rank, String line)
+            throws IOException {
         int tid = -1;
         String pid = null;
         ITmfTimestamp ts = null;
@@ -39,53 +26,76 @@ public final class ChromiumEvent extends TmfEvent {
         String name = null;
         String cat = null;
         int id = -1;
-        JsonToken token = jsonParser.nextToken();
-        if (token == null) {
+        if (line == null) {
             return null;
         }
-        while (!token.equals(JsonToken.END_OBJECT)) {
-            if (token.equals(JsonToken.FIELD_NAME)) {
-                String fieldName = jsonParser.getCurrentName();
-                token = jsonParser.nextValue();
-                switch (fieldName) {
-                case "dur":
-                    duration = parseTs(jsonParser.getText());
-                    break;
-                case "ts":
-                    ts = TmfTimestamp.fromNanos(parseTs(jsonParser.getText()));
-                    break;
-                case "tid":
-                    tid = jsonParser.getValueAsInt(-1);
-                    break;
-                case "pid":
-                    pid = jsonParser.getValueAsString();
-                    break;
-                case "ph": // phase
-                    ph = jsonParser.getValueAsString().charAt(0);
-                    break;
-                case "name":
-                    name = jsonParser.getValueAsString();
-                    break;
-                case "cat":
-                    name = jsonParser.getValueAsString();
-                    break;
-                case "id":
-                    id = jsonParser.getValueAsInt(-1);
-                    break;
-                default:
-                    throw new IllegalStateException(fieldName);
-                }
+        int start = line.indexOf('{');
+        int end = line.lastIndexOf('}');
+        if (start == -1 || end == -1) {
+            return null;
+        }
+        String tokenString = line.substring(start + 1, end);
+        String[] tokens = tokenString.split(",");
+
+        for (String token : tokens) {
+            String[] field = token.split(":"); //$NON-NLS-1$
+            if (field.length != 2) {
+                continue;
             }
-            token = jsonParser.nextToken();
-            if (token == null) {
-                return null;
+            String fieldName = field[0].substring(1, field[0].length() - 1);
+            String value = field[1].trim();
+            switch (fieldName) {
+            case "dur":
+                duration = parseTs(value);
+                break;
+            case "ts":
+                ts = TmfTimestamp.fromNanos(parseTs(value));
+                break;
+            case "tid":
+                tid = getInt(value);
+                break;
+            case "pid":
+                pid = value;
+                break;
+            case "ph": // phase
+                ph = getString(value).charAt(0);
+                break;
+            case "name":
+                name = getString(value);
+                break;
+            case "cat":
+                cat = getString(value);
+                break;
+            case "id":
+                id = getInt(value);
+                break;
+            default:
+                throw new IllegalStateException(fieldName + " " + value);
             }
         }
-        return new ChromiumEvent(trace, rank, ts, ChromiumType.get(name),
-                new ChromiumFields(name, cat, tid, pid, ph, id, duration));
+
+        return new ChromiumEvent(trace, rank, ts, ChromiumType.get(name), new ChromiumFields(name, cat, tid, pid, ph, id, duration));
+
     }
 
-    private static long parseTs(String ts) {
+    private static int getInt(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+        }
+        return -1;
+    }
+
+    private static String getString(String value) {
+        int first = value.indexOf('"');
+        int last = value.lastIndexOf('"');
+        if (first == -1 || last == -1) {
+            return value;
+        }
+        return value.substring(first + 1, last);
+    }
+
+    protected static long parseTs(String ts) {
         long valInNs = 0;
         int length = ts.length();
         for (int i = 0; i < length; i++) {

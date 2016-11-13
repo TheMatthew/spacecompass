@@ -3,40 +3,33 @@ package org.eclipse.tracecompass.analysis.chromium.core.trace;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.internal.analysis.chromium.core.Activator;
 import org.eclipse.tracecompass.internal.analysis.chromium.core.event.ChromiumEvent;
-import org.eclipse.tracecompass.internal.analysis.chromium.core.event.ChromiumFields;
-import org.eclipse.tracecompass.internal.analysis.chromium.core.trace.ChromiumContext;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.exceptions.TmfTraceException;
+import org.eclipse.tracecompass.tmf.core.io.BufferedRandomAccessFile;
 import org.eclipse.tracecompass.tmf.core.project.model.ITmfPropertiesProvider;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfContext;
 import org.eclipse.tracecompass.tmf.core.trace.TmfContext;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
+import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 import org.eclipse.tracecompass.tmf.core.trace.TraceValidationStatus;
 import org.eclipse.tracecompass.tmf.core.trace.indexer.ITmfPersistentlyIndexable;
 import org.eclipse.tracecompass.tmf.core.trace.location.ITmfLocation;
 import org.eclipse.tracecompass.tmf.core.trace.location.TmfLongLocation;
-import org.json.JSONException;
-
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonParser.Feature;
 
 /**
  * @author matthew
@@ -47,26 +40,54 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
     private static final int ESTIMATED_EVENT_SIZE = 90;
     private static final TmfLongLocation NULL_LOCATION = new TmfLongLocation(-1L);
     private static final TmfContext INVALID_CONTEXT = new TmfContext(NULL_LOCATION, ITmfContext.UNKNOWN_RANK);
-    private static final TmfLongLocation INVALID_LOCATION = new TmfLongLocation(-1);
+    private static final int MAX_LINES = 100;
+    private static final int MAX_CONFIDENCE = 100;
 
-    private TmfLongLocation fCurrentLocation = INVALID_LOCATION;
     private File fFile;
-    static final JsonFactory JSON_FACTORY = new JsonFactory();
-    private final List<JsonParser> fParsers = new ArrayList<>();
+
+    private RandomAccessFile fFileInput;
 
     @Override
     public IStatus validate(IProject project, String path) {
-
-        try (JsonParser parser = createParser(new File(path))) {
-            ITmfEvent event = ChromiumEvent.parse(this, 0, parser);
-            if (event == null) { // $NON-NLS-1$
-                throw new JSONException("No events!"); //$NON-NLS-1$
+        File file = new File(path);
+        if (!file.exists()) {
+            return new Status(IStatus.ERROR, Activator.PLUGIN_ID, "File not found: " + path); //$NON-NLS-1$
+        }
+        if (!file.isFile()) {
+            return new Status(IStatus.ERROR, Activator.PLUGIN_ID, "Not a file. It's a directory: " + path); //$NON-NLS-1$
+        }
+        int confidence = 0;
+        try {
+            if (!TmfTraceUtils.isText(file)) {
+                return new TraceValidationStatus(confidence, Activator.PLUGIN_ID);
             }
-            return new TraceValidationStatus(50, Activator.PLUGIN_ID);
-        } catch (JSONException | IOException e) {
-            return new TraceValidationStatus(0, Activator.PLUGIN_ID);
+        } catch (IOException e) {
+            Activator.getInstance().logError("Error validating file: " + path, e); //$NON-NLS-1$
+            return new Status(IStatus.ERROR, Activator.PLUGIN_ID, "IOException validating file: " + path, e); //$NON-NLS-1$
+        }
+        try (BufferedRandomAccessFile rafile = new BufferedRandomAccessFile(path, "r")) { //$NON-NLS-1$
+            int lineCount = 0;
+            int matches = 0;
+            String line = readNextEventString(rafile);
+            while ((line != null) && (lineCount++ < MAX_LINES)) {
+                try {
+                    ITmfEvent event = ChromiumEvent.parse(this, lineCount, line);
+                    if (event != null) {
+                        matches++;
+                    }
+                } catch (RuntimeException e) {
+                    confidence = Integer.MIN_VALUE;
+                }
+
+                confidence = MAX_CONFIDENCE * matches / lineCount;
+                line = readNextEventString(rafile);
+            }
+        } catch (IOException e) {
+            Activator.getInstance().logError("Error validating file: " + path, e); //$NON-NLS-1$
+            return new Status(IStatus.ERROR, Activator.PLUGIN_ID, "IOException validating file: " + path, e); //$NON-NLS-1$
         }
 
+        return new TraceValidationStatus(confidence, Activator.PLUGIN_ID);
     }
 
     @Override
@@ -87,77 +108,27 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
                 throw new TmfTraceException("Job failed " + result.getMessage());
             }
         }
-        try (JsonParser parser = createParser(fFile)) {
+        try {
+            fFileInput = new BufferedRandomAccessFile(fFile, "r");
         } catch (IOException e) {
             throw new TmfTraceException(e.getMessage(), e);
         }
     }
 
-    static void writeEvent(JsonGenerator generator, ChromiumEvent sortedEvent) throws IOException {
-        generator.writeStartObject();
-        long ts = sortedEvent.getTimestamp().toNanos();
-        generator.writeNumberField("ts", ts / 1000); //$NON-NLS-1$
-        generator.writeRaw("." + ts % 1000); //$NON-NLS-1$
-        generator.writeObjectField("name", sortedEvent.getName()); //$NON-NLS-1$
-        Integer tid = sortedEvent.getContent().getFieldValue(Integer.class, "tid"); //$NON-NLS-1$
-        if (tid != null && tid != -1) {
-            generator.writeNumberField("tid", tid); //$NON-NLS-1$
-        }
-        Integer pid = sortedEvent.getContent().getFieldValue(Integer.class, "pid"); //$NON-NLS-1$
-        if (pid != null && pid != -1) {
-            generator.writeNumberField("pid", pid); //$NON-NLS-1$
-        } else {
-            String pidString = sortedEvent.getContent().getFieldValue(String.class, "pid"); //$NON-NLS-1$
-            if (pidString != null) {
-                generator.writeObjectField("pid", pid); //$NON-NLS-1$
-            }
-        }
-        Integer id = sortedEvent.getContent().getFieldValue(Integer.class, "id"); //$NON-NLS-1$
-        if (id != null && id != -1) {
-            generator.writeNumberField("id", id); //$NON-NLS-1$
-        }
-        Long dur = sortedEvent.getContent().getFieldValue(Long.class, "dur"); //$NON-NLS-1$
-        if (dur != null && dur != -1 && dur != 0) {
-            generator.writeNumberField("dur", dur); //$NON-NLS-1$
-        }
-        char phase = ((ChromiumFields) sortedEvent.getContent()).getPhRaw();
-        generator.writeObjectField("ph", String.valueOf(phase)); //$NON-NLS-1$
-
-        generator.writeEndObject();
-        generator.writeRaw("\n"); //$NON-NLS-1$
-    }
-
-    private JsonParser createParser(File file) throws IOException, JsonParseException {
-        JsonParser parser = JSON_FACTORY.createParser(file);
-        parser.enable(Feature.ALLOW_COMMENTS);
-        fParsers.add(parser);
-        return parser;
-    }
-
     @Override
     public synchronized void dispose() {
-        fParsers.forEach(parser -> {
-            try {
-                if (!parser.isClosed()) {
-                    parser.close();
-                }
-            } catch (IOException e) {
-                Activator.getInstance().logError(e.getMessage(), e);
-            }
-        });
-        fParsers.clear();
+        try {
+            fFileInput.close();
+        } catch (IOException e) {
+            Activator.getInstance().logError("Error disposing trace. File: " + getPath(), e); //$NON-NLS-1$
+        }
         super.dispose();
 
     }
 
     @Override
-    public ITmfLocation getCurrentLocation() {
-        return fCurrentLocation;
-    }
-
-    @Override
     public double getLocationRatio(ITmfLocation location) {
-        return (double) fCurrentLocation.getLocationInfo() / fFile.length();
+        return (double) getCurrentLocation().getLocationInfo() / fFile.length();
     }
 
     @Override
@@ -165,25 +136,24 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
         if (fFile == null) {
             return INVALID_CONTEXT;
         }
+        final TmfContext context = new TmfContext(NULL_LOCATION, ITmfContext.UNKNOWN_RANK);
+        if (NULL_LOCATION.equals(location) || fFile == null) {
+            return context;
+        }
         try {
-            ChromiumContext context = null;
-            Long rank = -1L;
-            if (location == null || location.equals(NULL_LOCATION)) {
-                context = new ChromiumContext(createParser(fFile));
-                context.setLocation(new TmfLongLocation(0));
+            if (location == null) {
+                fFileInput.seek(1);
             } else if (location.getLocationInfo() instanceof Long) {
-                context = new ChromiumContext(createParser(fFile));
-                rank = (Long) location.getLocationInfo();
-                context.skip(rank);
-                context.setLocation(new TmfLongLocation(rank));
+                fFileInput.seek((Long) location.getLocationInfo());
             }
+            context.setLocation(new TmfLongLocation(fFileInput.getFilePointer()));
             return context;
         } catch (final FileNotFoundException e) {
             Activator.getInstance().logError("Error seeking event. File not found: " + getPath(), e); //$NON-NLS-1$
-            return INVALID_CONTEXT;
+            return context;
         } catch (final IOException e) {
             Activator.getInstance().logError("Error seeking event. File: " + getPath(), e); //$NON-NLS-1$
-            return INVALID_CONTEXT;
+            return context;
         }
     }
 
@@ -200,22 +170,22 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
 
     @Override
     public ITmfEvent parseEvent(ITmfContext context) {
-        if (context instanceof ChromiumContext) {
-            ChromiumContext chromiumContext = (ChromiumContext) context;
-            @Nullable
-            ITmfLocation location = chromiumContext.getLocation();
-            if (location instanceof TmfLongLocation) {
-                TmfLongLocation tmfLongLocation = (TmfLongLocation) location;
-                Long locationInfo = tmfLongLocation.getLocationInfo();
-                if (location.equals(NULL_LOCATION)) {
-                    locationInfo = 0L;
-                }
-                if (locationInfo != null) {
-                    try {
-                        return ChromiumEvent.parse(this, locationInfo, chromiumContext.getParser());
-                    } catch (IOException e) {
-                        Activator.getInstance().logError("Error parsing event", e); //$NON-NLS-1$
+        @Nullable
+        ITmfLocation location = context.getLocation();
+        if (location instanceof TmfLongLocation) {
+            TmfLongLocation tmfLongLocation = (TmfLongLocation) location;
+            Long locationInfo = tmfLongLocation.getLocationInfo();
+            if (location.equals(NULL_LOCATION)) {
+                locationInfo = 0L;
+            }
+            if (locationInfo != null) {
+                try {
+                    if (!locationInfo.equals(fFileInput.getFilePointer())) {
+                        fFileInput.seek(locationInfo);
                     }
+                    return ChromiumEvent.parse(this, context.getRank(), readNextEventString(fFileInput));
+                } catch (IOException e) {
+                    Activator.getInstance().logError("Error parsing event", e); //$NON-NLS-1$
                 }
             }
         }
@@ -223,8 +193,18 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
     }
 
     @Override
+    public ITmfLocation getCurrentLocation() {
+        long temp = -1;
+        try {
+            temp = fFileInput.getFilePointer();
+        } catch (IOException e) {
+        }
+        return new TmfLongLocation(temp);
+    }
+
+    @Override
     public @NonNull Map<@NonNull String, @NonNull String> getProperties() {
-        return Collections.singletonMap("Type", "Chromium"); //$NON-NLS-1$ //$NON-NLS-2$
+        return Collections.singletonMap("Type", "Trace-Event"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     @Override
@@ -234,7 +214,20 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
 
     @Override
     public int getCheckpointSize() {
-        return 1000;
+        return 10000;
+    }
+
+    private static @Nullable String readNextEventString(RandomAccessFile parser) throws IOException {
+        StringBuffer sb = new StringBuffer();
+        char elem = (char) parser.read();
+        if (elem == ']') {
+            return null;
+        }
+        while (elem != '}' && elem != ']' && elem != (char) -1) {
+            elem = (char) parser.read();
+            sb.append(elem);
+        }
+        return (elem == '}') ? sb.toString() : null;
     }
 
 }
