@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.4"?>
 <plugin>
+   <extension-point id="org.eclipse.tracecompass.splashs" name="splashExtension" schema="schema/org.eclipse.tracecompass.splashs.exsd"/>
+ 
 <extension
          id="application"
          point="org.eclipse.core.runtime.applications">
@@ -29,6 +31,7 @@
       <activityPatternBinding activityId="org.eclipse.unwantedResourcePerspective"  pattern="org\.eclipse\.ui\.[r]*" />
       <defaultEnablement id="org.eclipse.tracecompass.rcp.ui" />
    </extension>
+   
    <extension
          point="org.eclipse.ui.menus">
       <menuContribution

@@ -8,4 +8,5 @@ Bundle-SymbolicName: org.eclipse.tracecompass.rcp.branding;singleton:=true
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Eclipse-BundleShape: dir
 Require-Bundle: org.eclipse.core.runtime,
- org.eclipse.ui.intro
+ org.eclipse.ui.intro,
+ org.eclipse.tracecompass.rcp.ui

@@ -29,4 +29,13 @@
             </property>
       </product>
    </extension>
+   
+<!-- define images (in plugin root directory) to be shown -->
+<extension point="org.eclipse.tracecompass.splashs">
+     <splashExtension image="splash/splash0.bmp"/>
+     <splashExtension image="splash/splash1.bmp"/>
+     <splashExtension image="splash/splash2.bmp"/>
+     <splashExtension image="splash/splash3.bmp"/>
+     <splashExtension image="splash/splash4.bmp"/>
+</extension>
 </plugin>

@@ -70,6 +70,7 @@ public class TmfStateSystemViewer extends AbstractTmfTreeViewer {
     private static final int START_TIME_COL = 4;
     private static final int END_TIME_COL = 5;
     private static final int ATTRIBUTE_FULLPATH_COL = 6;
+    private static final int DURATION_COL = 7;
 
     /**
      * Base class to provide the labels for the tree viewer. Views extending
@@ -97,6 +98,8 @@ public class TmfStateSystemViewer extends AbstractTmfTreeViewer {
                     return entry.getEndTime();
                 case ATTRIBUTE_FULLPATH_COL:
                     return entry.getFullPath();
+                case DURATION_COL:
+                    return entry.getDuration();
                 default:
                     return EMPTY_STRING;
                 }
@@ -151,6 +154,7 @@ public class TmfStateSystemViewer extends AbstractTmfTreeViewer {
                 columns.add(new TmfTreeColumnData(Messages.StartTimeColumLabel));
                 columns.add(new TmfTreeColumnData(Messages.EndTimeColumLabel));
                 columns.add(new TmfTreeColumnData(Messages.AttributePathColumnLabel));
+                columns.add(new TmfTreeColumnData(Messages.DurationColumnLabel));
                 return columns;
             }
 
@@ -262,9 +266,7 @@ public class TmfStateSystemViewer extends AbstractTmfTreeViewer {
             ITmfStateInterval interval = fullState.get(quark);
             StateEntry stateEntry = findStateEntry(parent, quark);
             if (stateEntry == null) {
-                boolean modified = fFilterStatus ?
-                        interval.getStartTime() == timestamp :
-                            !interval.getStateValue().isNull();
+                boolean modified = fFilterStatus ? interval.getStartTime() == timestamp : !interval.getStateValue().isNull();
                 stateEntry = new StateEntry(ss.getAttributeName(quark), quark, ss.getFullAttributePath(quark),
                         interval.getStateValue(),
                         TmfTimestamp.fromNanos(interval.getStartTime()),
@@ -275,9 +277,9 @@ public class TmfStateSystemViewer extends AbstractTmfTreeViewer {
                 updateStateEntries(ss, fullState, stateEntry, quark, timestamp);
 
                 /*
-                 * Add this entry to parent if filtering is off, or
-                 * if the entry has children to display, or
-                 * if there is a state change at the current timestamp
+                 * Add this entry to parent if filtering is off, or if the entry
+                 * has children to display, or if there is a state change at the
+                 * current timestamp
                  */
                 if (!fFilterStatus || stateEntry.hasChildren() || interval.getStartTime() == timestamp) {
                     parent.addChild(stateEntry);
@@ -305,6 +307,7 @@ public class TmfStateSystemViewer extends AbstractTmfTreeViewer {
         }
         return null;
     }
+
     /**
      * Set the entries as out of range
      */
@@ -400,6 +403,10 @@ public class TmfStateSystemViewer extends AbstractTmfTreeViewer {
                 return EMPTY_STRING;
             }
             return fEnd.toString();
+        }
+
+        public String getDuration() {
+            return Long.toString(fEnd.getDelta(fStart).toNanos()) + " ns"; //$NON-NLS-1$
         }
 
         public String getValue() {
