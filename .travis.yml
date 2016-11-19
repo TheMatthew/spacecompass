@@ -10,4 +10,4 @@ jdk:
 - oraclejdk8
 
 sudo: false
-script: mvn clean install -Dskip-automated-ui-tests
+script: mvn clean install -Dmaven.test.skip=true
