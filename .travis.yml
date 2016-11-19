@@ -1,0 +1,5 @@
+{
+  "language": "java",
+  "os": "linux"
+  "script": "mvn clean install -Dskip-automated-ui-tests"
+}
