@@ -37,6 +37,7 @@ import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTree;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
 import org.eclipse.tracecompass.ctf.core.tests.shared.LttngTraceGenerator;
+import org.eclipse.tracecompass.internal.analysis.os.linux.ui.views.resources.ResourcesView;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSelectionRangeUpdatedSignal;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalManager;
 import org.eclipse.tracecompass.tmf.core.signal.TmfWindowRangeUpdatedSignal;
@@ -93,11 +94,10 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
     private static final Point TOGGLE_SIZE = new Point(7, 8);
     private static final Point HIDE_SIZE = new Point(16, 16);
 
-    private SWTBotView fViewBot;
 
     @Override
     protected SWTBotView getViewBot() {
-        return fViewBot;
+        return fBot.viewById(ResourcesView.ID);
     }
 
     @Override
@@ -119,10 +119,10 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
     @Override
     @Before
     public void before() {
-        fViewBot = fBot.viewByTitle("Resources");
-        fViewBot.show();
+        SWTBotView viewBot = getViewBot();
+        viewBot.show();
         super.before();
-        fViewBot.setFocus();
+        viewBot.setFocus();
     }
 
     /**
@@ -142,11 +142,12 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
      */
     @Test
     public void testToolBarSelectNextPreviousMarker() {
+        SWTBotView viewBot = getViewBot();
         testNextPreviousMarker(
-                () -> fViewBot.toolbarButton(NEXT_MARKER).click(),
-                () -> fViewBot.toolbarButton(NEXT_MARKER).click(SWT.SHIFT),
-                () -> fViewBot.toolbarButton(PREVIOUS_MARKER).click(),
-                () -> fViewBot.toolbarButton(PREVIOUS_MARKER).click(SWT.SHIFT));
+                () -> viewBot.toolbarButton(NEXT_MARKER).click(),
+                () -> viewBot.toolbarButton(NEXT_MARKER).click(SWT.SHIFT),
+                () -> viewBot.toolbarButton(PREVIOUS_MARKER).click(),
+                () -> viewBot.toolbarButton(PREVIOUS_MARKER).click(SWT.SHIFT));
     }
 
     private void testNextPreviousMarker(Runnable nextMarker, Runnable shiftNextMarker, Runnable previousMarker, Runnable shiftPreviousMarker) {
@@ -195,6 +196,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
      */
     @Test
     public void testShowMarkers() {
+        SWTBotView viewBot = getViewBot();
         /* set selection to trace start time */
         TmfSignalManager.dispatchSignal(new TmfSelectionRangeUpdatedSignal(this, START_TIME));
         timeGraphIsReadyCondition(new TmfTimeRange(START_TIME, START_TIME), START_TIME);
@@ -203,22 +205,22 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         KEYBOARD.pressShortcut(Keystrokes.HOME);
 
         /* check that "Next Marker" and "Previous Marker" are enabled */
-        assertTrue(fViewBot.toolbarButton(NEXT_MARKER).isEnabled());
-        assertTrue(fViewBot.toolbarButton(PREVIOUS_MARKER).isEnabled());
+        assertTrue(viewBot.toolbarButton(NEXT_MARKER).isEnabled());
+        assertTrue(viewBot.toolbarButton(PREVIOUS_MARKER).isEnabled());
 
         /* disable Lost Events markers */
-        fViewBot.viewMenu(LOST_EVENTS).click();
+        viewBot.viewMenu(LOST_EVENTS).click();
 
         /* check that "Next Marker" and "Previous Marker" are disabled */
-        assertFalse(fViewBot.toolbarButton(NEXT_MARKER).isEnabled());
-        assertFalse(fViewBot.toolbarButton(PREVIOUS_MARKER).isEnabled());
+        assertFalse(viewBot.toolbarButton(NEXT_MARKER).isEnabled());
+        assertFalse(viewBot.toolbarButton(PREVIOUS_MARKER).isEnabled());
 
         /* enable Lost Events markers */
-        fViewBot.viewMenu(LOST_EVENTS).click();
+        viewBot.viewMenu(LOST_EVENTS).click();
 
         /* check that "Next Marker" and "Previous Marker" are enabled */
-        assertTrue(fViewBot.toolbarButton(NEXT_MARKER).isEnabled());
-        assertTrue(fViewBot.toolbarButton(PREVIOUS_MARKER).isEnabled());
+        assertTrue(viewBot.toolbarButton(NEXT_MARKER).isEnabled());
+        assertTrue(viewBot.toolbarButton(PREVIOUS_MARKER).isEnabled());
     }
 
     /**
@@ -228,6 +230,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
     @Ignore
     @Test
     public void testMarkerNavigationSubMenu() {
+        SWTBotView viewBot = getViewBot();
         /* set selection to trace start time */
         TmfSignalManager.dispatchSignal(new TmfSelectionRangeUpdatedSignal(this, START_TIME));
         timeGraphIsReadyCondition(new TmfTimeRange(START_TIME, START_TIME), START_TIME);
@@ -236,17 +239,17 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         KEYBOARD.pressShortcut(Keystrokes.HOME);
 
         /* disable Lost Events navigation */
-        fViewBot.toolbarDropDownButton(NEXT_MARKER).menuItem(LOST_EVENTS).click();
+        viewBot.toolbarDropDownButton(NEXT_MARKER).menuItem(LOST_EVENTS).click();
 
         /* click "Next Marker" */
-        fViewBot.toolbarButton(NEXT_MARKER).click();
+        viewBot.toolbarButton(NEXT_MARKER).click();
         timeGraphIsReadyCondition(new TmfTimeRange(START_TIME, START_TIME), START_TIME);
 
         /* enable Lost Events navigation */
-        fViewBot.toolbarDropDownButton(NEXT_MARKER).menuItem(LOST_EVENTS).click();
+        viewBot.toolbarDropDownButton(NEXT_MARKER).menuItem(LOST_EVENTS).click();
 
         /* click "Next Marker" */
-        fViewBot.toolbarButton(NEXT_MARKER).click();
+        viewBot.toolbarButton(NEXT_MARKER).click();
         timeGraphIsReadyCondition(new TmfTimeRange(LOST_EVENT_TIME1, LOST_EVENT_END1), LOST_EVENT_TIME1);
     }
 
@@ -255,6 +258,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
      */
     @Test
     public void testAddRemoveBookmark() {
+        SWTBotView viewBot = getViewBot();
         /* change window range to 10 ms */
         TmfTimeRange range = new TmfTimeRange(START_TIME, START_TIME.normalize(10000000L, ITmfTimestamp.NANOSECOND_SCALE));
         TmfSignalManager.dispatchSignal(new TmfWindowRangeUpdatedSignal(this, range));
@@ -269,13 +273,13 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         KEYBOARD.pressShortcut(Keystrokes.DOWN);
 
         /* click "Select Next State Change" 2 times */
-        fViewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click();
+        viewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click();
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME1, CPU0_TIME1), CPU0_TIME1);
-        fViewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click();
+        viewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click();
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME2, CPU0_TIME2), CPU0_TIME2);
 
         /* click "Add Bookmark..." and fill Add Bookmark dialog */
-        fViewBot.toolbarButton(ADD_BOOKMARK).click();
+        viewBot.toolbarButton(ADD_BOOKMARK).click();
         SWTBot dialogBot = fBot.shell(ADD_BOOKMARK_DIALOG).bot();
         dialogBot.text().setText("B1");
         dialogBot.button(OK).click();
@@ -284,39 +288,39 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
          * click "Select Next State Change" 2 times and shift-click "Select Next
          * State Change
          */
-        fViewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click();
+        viewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click();
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME3, CPU0_TIME3), CPU0_TIME3);
-        fViewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click();
+        viewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click();
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME4, CPU0_TIME4), CPU0_TIME4);
-        fViewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click(SWT.SHIFT);
+        viewBot.toolbarButton(SELECT_NEXT_STATE_CHANGE).click(SWT.SHIFT);
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME4, CPU0_TIME5), CPU0_TIME5);
 
         /* click "Add Bookmark..." and fill Add Bookmark dialog */
-        fViewBot.toolbarButton(ADD_BOOKMARK).click();
+        viewBot.toolbarButton(ADD_BOOKMARK).click();
         dialogBot = fBot.shell(ADD_BOOKMARK_DIALOG).bot();
         dialogBot.text().setText("B2");
         dialogBot.button(OK).click();
 
         /* click "Previous Marker" */
-        fViewBot.toolbarButton(PREVIOUS_MARKER).click();
+        viewBot.toolbarButton(PREVIOUS_MARKER).click();
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME2, CPU0_TIME2), CPU0_TIME2);
 
         /* click "Remove Bookmark" */
-        fViewBot.toolbarButton(REMOVE_BOOKMARK).click();
+        viewBot.toolbarButton(REMOVE_BOOKMARK).click();
 
         /* click "Next Marker" */
-        fViewBot.toolbarButton(NEXT_MARKER).click();
+        viewBot.toolbarButton(NEXT_MARKER).click();
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME4, CPU0_TIME5), CPU0_TIME5);
 
         /* click "Remove Bookmark" */
-        fViewBot.toolbarButton(REMOVE_BOOKMARK).click();
+        viewBot.toolbarButton(REMOVE_BOOKMARK).click();
 
         /* click "Previous Marker" */
-        fViewBot.toolbarButton(PREVIOUS_MARKER).click();
+        viewBot.toolbarButton(PREVIOUS_MARKER).click();
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME4, CPU0_TIME5), CPU0_TIME5);
 
         /* click "Select Previous State Change" */
-        fViewBot.toolbarButton(SELECT_PREVIOUS_STATE_CHANGE).click();
+        viewBot.toolbarButton(SELECT_PREVIOUS_STATE_CHANGE).click();
         timeGraphIsReadyCondition(new TmfTimeRange(CPU0_TIME4, CPU0_TIME4), CPU0_TIME4);
     }
 
@@ -325,6 +329,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
      */
     @Test
     public void testMarkerAxis() {
+        SWTBotView viewBot = getViewBot();
         /* center window range of first lost event range */
         ITmfTimestamp startTime = LOST_EVENT_TIME1.normalize(-10000000L, ITmfTimestamp.NANOSECOND_SCALE);
         ITmfTimestamp endTime = LOST_EVENT_END1.normalize(10000000L, ITmfTimestamp.NANOSECOND_SCALE);
@@ -337,11 +342,11 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         timeGraphIsReadyCondition(new TmfTimeRange(startTime, startTime), startTime);
 
         /* get marker axis size with one category */
-        final TimeGraphMarkerAxis markerAxis = fViewBot.bot().widget(WidgetOfType.widgetOfType(TimeGraphMarkerAxis.class));
+        final TimeGraphMarkerAxis markerAxis = viewBot.bot().widget(WidgetOfType.widgetOfType(TimeGraphMarkerAxis.class));
         final Point size1 = getSize(markerAxis);
 
         /* add bookmark at window start time */
-        fViewBot.toolbarButton(ADD_BOOKMARK).click();
+        viewBot.toolbarButton(ADD_BOOKMARK).click();
         SWTBot dialogBot = fBot.shell(ADD_BOOKMARK_DIALOG).bot();
         dialogBot.text().setText("B");
         dialogBot.button(OK).click();
@@ -353,7 +358,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         /*
          * get the state area bounds, since we don't know the name space width
          */
-        final TimeGraphControl timeGraph = fViewBot.bot().widget(WidgetOfType.widgetOfType(TimeGraphControl.class));
+        final TimeGraphControl timeGraph = viewBot.bot().widget(WidgetOfType.widgetOfType(TimeGraphControl.class));
         int x0 = getXForTime(timeGraph, startTime.toNanos());
         int x1 = getXForTime(timeGraph, endTime.toNanos());
 
@@ -373,7 +378,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         fBot.waitUntil(ConditionHelpers.selectionRange(new TmfTimeRange(startTime, startTime)));
 
         /* click "Remove Bookmark" */
-        fViewBot.toolbarButton(REMOVE_BOOKMARK).click();
+        viewBot.toolbarButton(REMOVE_BOOKMARK).click();
         assertEquals(size1, getSize(markerAxis));
 
         /* click the 'expanded' icon to collapse */
@@ -389,7 +394,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         assertEquals(0, getSize(markerAxis).y);
 
         /* show Lost Events markers */
-        fViewBot.viewMenu(LOST_EVENTS).click();
+        viewBot.viewMenu(LOST_EVENTS).click();
         assertEquals(size1, getSize(markerAxis));
     }
 
@@ -403,7 +408,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
         TmfSignalManager.dispatchSignal(new TmfWindowRangeUpdatedSignal(this, range));
         timeGraphIsReadyCondition(new TmfTimeRange(START_TIME, START_TIME), START_TIME);
 
-        SWTBotToolbarButton filterButton = fViewBot.toolbarButton("Show View Filters");
+        SWTBotToolbarButton filterButton = getViewBot().toolbarButton("Show View Filters");
         filterButton.click();
         fBot.waitUntil(org.eclipse.swtbot.swt.finder.waits.Conditions.shellIsActive("Filter"));
         SWTBot bot = fBot.activeShell().bot();
@@ -456,7 +461,7 @@ public class ResourcesViewTest extends KernelTimeGraphViewTestBase {
     }
 
     private void timeGraphIsReadyCondition(@NonNull TmfTimeRange selectionRange, @NonNull ITmfTimestamp visibleTime) {
-        IWorkbenchPart part = fViewBot.getViewReference().getPart(false);
+        IWorkbenchPart part = getViewBot().getViewReference().getPart(false);
         fBot.waitUntil(ConditionHelpers.timeGraphIsReadyCondition((AbstractTimeGraphView) part, selectionRange, visibleTime));
     }
 
