@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -84,6 +85,7 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
 import org.eclipse.tracecompass.common.core.log.TraceCompassLog;
+import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils;
 import org.eclipse.tracecompass.internal.tmf.ui.Activator;
 import org.eclipse.tracecompass.tmf.core.resources.ITmfMarker;
 import org.eclipse.tracecompass.tmf.core.signal.TmfMarkerEventSourceUpdatedSignal;
@@ -140,16 +142,19 @@ import org.eclipse.ui.handlers.IHandlerService;
  * An abstract view all time graph views can inherit
  *
  * This view contains either a time graph viewer, or a time graph combo which is
- * divided between a tree viewer on the left and a time graph viewer on the right.
+ * divided between a tree viewer on the left and a time graph viewer on the
+ * right.
  */
 public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeAligned, IResourceChangeListener {
 
-    /** Constant indicating that all levels of the time graph should be expanded */
+    /**
+     * Constant indicating that all levels of the time graph should be expanded
+     */
     protected static final int ALL_LEVELS = AbstractTreeViewer.ALL_LEVELS;
 
     private static final Pattern RGBA_PATTERN = Pattern.compile("RGBA \\{(\\d+), (\\d+), (\\d+), (\\d+)\\}"); //$NON-NLS-1$
 
-    private static final Logger LOGGER = TraceCompassLog.getLogger(AbstractTimeGraphView.class);
+    private static final @NonNull Logger LOGGER = TraceCompassLog.getLogger(AbstractTimeGraphView.class);
     private static final String LOG_STRING_WITH_PARAM = "[TimeGraphView:%s] viewId=%s, %s"; //$NON-NLS-1$
     private static final String LOG_STRING = "[TimeGraphView:%s] viewId=%s"; //$NON-NLS-1$
 
@@ -174,7 +179,7 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     /** The selected trace */
     private ITmfTrace fTrace;
 
-    /** The selected trace editor file*/
+    /** The selected trace editor file */
     private IFile fEditorFile;
 
     /** The timegraph entry list */
@@ -216,7 +221,9 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     /** A comparator class */
     private Comparator<ITimeGraphEntry> fEntryComparator = null;
 
-    /** The redraw state used to prevent unnecessary queuing of display runnables */
+    /**
+     * The redraw state used to prevent unnecessary queuing of display runnables
+     */
     private State fRedrawState = State.IDLE;
 
     /** The redraw synchronization object */
@@ -266,16 +273,18 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     private volatile boolean fIsRevealSelection = false;
 
     /**
-     * Menu Manager for context-sensitive menu for time graph entries.
-     * This will be used on the tree viewer in case of the time graph combo
-     * or the on the namespace in case of a single time graph viewer.
+     * Menu Manager for context-sensitive menu for time graph entries. This will
+     * be used on the tree viewer in case of the time graph combo or the on the
+     * namespace in case of a single time graph viewer.
      */
     private final @NonNull MenuManager fEntryMenuManager = new MenuManager();
 
     /** Time Graph View part listener */
     private TimeGraphPartListener fPartListener;
 
-    /** Action for the find command. There is only one for all Time Graph views */
+    /**
+     * Action for the find command. There is only one for all Time Graph views
+     */
     private static final ShowFindDialogAction FIND_ACTION = new ShowFindDialogAction();
 
     /** The find action handler */
@@ -694,7 +703,8 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
 
     }
 
-    // TODO: This can implement ICoreRunnable once support for Eclipse 4.5. is not necessary anymore.
+    // TODO: This can implement ICoreRunnable once support for Eclipse 4.5. is
+    // not necessary anymore.
     private class BuildRunnable {
         private final @NonNull ITmfTrace fBuildTrace;
         private final @NonNull ITmfTrace fParentTrace;
@@ -705,26 +715,25 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
         }
 
         public void run(IProgressMonitor monitor) {
-            LOGGER.info(() -> getLogMessage("BuildThreadStart", "trace=" + fBuildTrace.getName())); //$NON-NLS-1$ //$NON-NLS-2$
-
-            buildEntryList(fBuildTrace, fParentTrace, NonNullUtils.checkNotNull(monitor));
-            synchronized (fBuildJobMap) {
-                fBuildJobMap.remove(fBuildTrace);
+            try (TraceCompassLogUtils.ScopeLog log = new TraceCompassLogUtils.ScopeLog(LOGGER, Level.INFO, "TimeGraphView:BuildThread", "trace",  fBuildTrace.getName())) { //$NON-NLS-1$ //$NON-NLS-2$
+                buildEntryList(fBuildTrace, fParentTrace, NonNullUtils.checkNotNull(monitor));
+                synchronized (fBuildJobMap) {
+                    fBuildJobMap.remove(fBuildTrace);
+                }
             }
-
-            LOGGER.info(() -> getLogMessage("BuildThreadEnd", null)); //$NON-NLS-1$
         }
     }
 
     /**
      * Zoom thread
+     *
      * @since 1.1
      */
     protected abstract class ZoomThread extends Thread {
         private final long fZoomStartTime;
         private final long fZoomEndTime;
         private final long fResolution;
-        private final @NonNull  IProgressMonitor fMonitor;
+        private final @NonNull IProgressMonitor fMonitor;
 
         /**
          * Constructor
@@ -781,12 +790,10 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
 
         @Override
         public final void run() {
-            LOGGER.info(() -> getLogMessage("ZoomThreadStart", "start=" + fZoomStartTime + ", end=" + fZoomEndTime)); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-
-            doRun();
-            fDirty.decrementAndGet();
-
-            LOGGER.info(() -> getLogMessage("ZoomThreadEnd", null)); //$NON-NLS-1$
+            try (TraceCompassLogUtils.ScopeLog log = new TraceCompassLogUtils.ScopeLog(LOGGER, Level.INFO, "TimeGraphView:ZoomThread", "start", fZoomStartTime, "end", fZoomEndTime)) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                doRun();
+                fDirty.decrementAndGet();
+            }
         }
 
         /**
@@ -809,6 +816,7 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
 
         /**
          * Run the zoom operation.
+         *
          * @since 2.0
          */
         public abstract void doRun();
@@ -824,35 +832,40 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
 
         @Override
         public void doRun() {
-            LOGGER.config(() -> getLogMessage("ZoomThreadGettingStates", null)); //$NON-NLS-1$
+            try (TraceCompassLogUtils.ScopeLog log = new TraceCompassLogUtils.ScopeLog(LOGGER, Level.CONFIG, "ZoomThread:GettingStates")) { //$NON-NLS-1$
+                LOGGER.config(() -> getLogMessage("ZoomThreadGettingStates", null)); //$NON-NLS-1$
 
-            for (TimeGraphEntry entry : fZoomEntryList) {
-                if (getMonitor().isCanceled()) {
-                    LOGGER.info(() -> getLogMessage("ZoomThreadCanceled", null)); //$NON-NLS-1$
-                    return;
+                for (TimeGraphEntry entry : fZoomEntryList) {
+                    if (getMonitor().isCanceled()) {
+                        LOGGER.info(() -> getLogMessage("ZoomThreadCanceled", null)); //$NON-NLS-1$
+                        return;
+                    }
+                    if (entry == null) {
+                        break;
+                    }
+                    zoom(entry, getMonitor());
                 }
-                if (entry == null) {
-                    break;
+                List<ILinkEvent> events;
+                try (TraceCompassLogUtils.ScopeLog linkLog = new TraceCompassLogUtils.ScopeLog(LOGGER, Level.CONFIG, "ZoomThread:GettingLinks")) { //$NON-NLS-1$
+                    /* Refresh the arrows when zooming */
+                    events = getLinkList(getZoomStartTime(), getZoomEndTime(), getResolution(), getMonitor());
                 }
-                zoom(entry, getMonitor());
+                try (TraceCompassLogUtils.ScopeLog markerLoglog = new TraceCompassLogUtils.ScopeLog(LOGGER, Level.CONFIG, "ZoomThread:GettingMarkers")) { //$NON-NLS-1$
+
+                    /* Refresh the view-specific markers when zooming */
+                    List<IMarkerEvent> markers = new ArrayList<>(getViewMarkerList(getZoomStartTime(), getZoomEndTime(), getResolution(), getMonitor()));
+                    /* Refresh the trace-specific markers when zooming */
+                    markers.addAll(getTraceMarkerList(getZoomStartTime(), getZoomEndTime(), getResolution(), getMonitor()));
+                    applyResults(() -> {
+                        if (events != null) {
+                            fTimeGraphWrapper.getTimeGraphViewer().setLinks(events);
+                        }
+                        fTimeGraphWrapper.getTimeGraphViewer().setMarkerCategories(getMarkerCategories());
+                        fTimeGraphWrapper.getTimeGraphViewer().setMarkers(markers);
+                        redraw();
+                    });
+                }
             }
-            /* Refresh the arrows when zooming */
-            LOGGER.config(() -> getLogMessage("ZoomThreadGettingLinks", null)); //$NON-NLS-1$
-            List<ILinkEvent> events = getLinkList(getZoomStartTime(), getZoomEndTime(), getResolution(), getMonitor());
-
-            /* Refresh the view-specific markers when zooming */
-            LOGGER.config(() -> getLogMessage("ZoomThreadGettingMarkers", null)); //$NON-NLS-1$
-            List<IMarkerEvent> markers = new ArrayList<>(getViewMarkerList(getZoomStartTime(), getZoomEndTime(), getResolution(), getMonitor()));
-            /* Refresh the trace-specific markers when zooming */
-            markers.addAll(getTraceMarkerList(getZoomStartTime(), getZoomEndTime(), getResolution(), getMonitor()));
-            applyResults(() -> {
-                if (events != null) {
-                    fTimeGraphWrapper.getTimeGraphViewer().setLinks(events);
-                }
-                fTimeGraphWrapper.getTimeGraphViewer().setMarkerCategories(getMarkerCategories());
-                fTimeGraphWrapper.getTimeGraphViewer().setMarkers(markers);
-                redraw();
-            });
         }
 
         private void zoom(@NonNull TimeGraphEntry entry, @NonNull IProgressMonitor monitor) {
@@ -1003,7 +1016,8 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
      * This should be called from the constructor.
      *
      * @param weights
-     *            The array (length 2) of relative weights of each part of the combo
+     *            The array (length 2) of relative weights of each part of the
+     *            combo
      */
     protected void setWeight(final int[] weights) {
         checkPartNotCreated();
@@ -1256,7 +1270,6 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
         return Messages.AbstractTimeGraphView_PreviousTooltip;
     }
 
-
     FindTarget getFindTarget() {
         return fFindTarget;
     }
@@ -1472,8 +1485,6 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
         return bookmarks;
     }
 
-
-
     // ------------------------------------------------------------------------
     // Signal handlers
     // ------------------------------------------------------------------------
@@ -1582,10 +1593,11 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     }
 
     /**
-     * @param signal the format of the timestamps was updated.
+     * @param signal
+     *            the format of the timestamps was updated.
      */
     @TmfSignalHandler
-    public void updateTimeFormat( final TmfTimestampFormatUpdateSignal signal){
+    public void updateTimeFormat(final TmfTimestampFormatUpdateSignal signal) {
         fTimeGraphWrapper.refresh();
     }
 
@@ -1636,7 +1648,8 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     }
 
     /**
-     * Forces a rebuild of the entries list, even if entries already exist for this trace
+     * Forces a rebuild of the entries list, even if entries already exist for
+     * this trace
      */
     protected void rebuild() {
         setStartTime(Long.MAX_VALUE);
@@ -1760,7 +1773,7 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
 
     /**
      * Gets the list of links (displayed as arrows) for a trace in a given
-     * timerange.  Default implementation returns an empty list.
+     * timerange. Default implementation returns an empty list.
      *
      * @param startTime
      *            Start of the time range
@@ -1809,7 +1822,8 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     }
 
     /**
-     * Gets the list of trace-specific markers for a trace in a given time range.
+     * Gets the list of trace-specific markers for a trace in a given time
+     * range.
      *
      * @param startTime
      *            Start of the time range
@@ -1875,92 +1889,92 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
         TmfUiRefreshHandler.getInstance().queueUpdate(this, new Runnable() {
             @Override
             public void run() {
-                LOGGER.info(() -> getLogMessage("RefreshStart", null)); //$NON-NLS-1$
-                if (fTimeGraphWrapper.isDisposed()) {
-                    return;
-                }
-                fDirty.incrementAndGet();
+                try (TraceCompassLogUtils.ScopeLog log = new TraceCompassLogUtils.ScopeLog(LOGGER, Level.INFO, "TimeGraphView:Refresh")) { //$NON-NLS-1$
+                    if (fTimeGraphWrapper.isDisposed()) {
+                        return;
+                    }
+                    fDirty.incrementAndGet();
 
-                boolean hasEntries = false;
-                synchronized (fEntryListMap) {
-                    fEntryList = fEntryListMap.get(fTrace);
-                    if (fEntryList == null) {
-                        fEntryList = new CopyOnWriteArrayList<>();
-                    } else if (fEntryComparator != null) {
-                        List<TimeGraphEntry> list = new ArrayList<>(fEntryList);
-                        Collections.sort(list, fEntryComparator);
-                        for (ITimeGraphEntry entry : list) {
-                            sortChildren(entry, fEntryComparator);
+                    boolean hasEntries = false;
+                    synchronized (fEntryListMap) {
+                        fEntryList = fEntryListMap.get(fTrace);
+                        if (fEntryList == null) {
+                            fEntryList = new CopyOnWriteArrayList<>();
+                        } else if (fEntryComparator != null) {
+                            List<TimeGraphEntry> list = new ArrayList<>(fEntryList);
+                            Collections.sort(list, fEntryComparator);
+                            for (ITimeGraphEntry entry : list) {
+                                sortChildren(entry, fEntryComparator);
+                            }
+                            fEntryList.clear();
+                            fEntryList.addAll(list);
                         }
-                        fEntryList.clear();
-                        fEntryList.addAll(list);
+                        hasEntries = !fEntryList.isEmpty();
                     }
-                    hasEntries = !fEntryList.isEmpty();
-                }
-                boolean inputChanged = fEntryList != fTimeGraphWrapper.getInput();
-                TimeGraphCombo combo = getTimeGraphCombo();
-                try {
-                    // Set redraw to false to only draw once
-                    if (combo != null) {
-                        combo.getTreeViewer().getTree().setRedraw(false);
+                    boolean inputChanged = fEntryList != fTimeGraphWrapper.getInput();
+                    TimeGraphCombo combo = getTimeGraphCombo();
+                    try {
+                        // Set redraw to false to only draw once
+                        if (combo != null) {
+                            combo.getTreeViewer().getTree().setRedraw(false);
+                        }
+                        getTimeGraphViewer().getTimeGraphControl().setRedraw(false);
+                        if (inputChanged) {
+                            fTimeGraphWrapper.setInput(fEntryList);
+                            /* restore the previously saved filters, if any */
+                            fTimeGraphWrapper.setFilters(fFiltersMap.get(fTrace));
+                            fTimeGraphWrapper.getTimeGraphViewer().setLinks(null);
+                            fTimeGraphWrapper.getTimeGraphViewer().setBookmarks(refreshBookmarks(fEditorFile));
+                            fTimeGraphWrapper.getTimeGraphViewer().setMarkerCategories(getMarkerCategories());
+                            fTimeGraphWrapper.getTimeGraphViewer().setMarkers(null);
+                            applyViewContext();
+                        } else {
+                            fTimeGraphWrapper.refresh();
+                        }
+                        // reveal selection
+                        if (fIsRevealSelection) {
+                            fIsRevealSelection = false;
+                            ITimeGraphEntry entry1 = fTimeGraphWrapper.getSelection();
+                            fTimeGraphWrapper.setSelection(entry1);
+                        }
+                    } finally {
+                        if (combo != null) {
+                            combo.getTreeViewer().getTree().setRedraw(true);
+                        }
+                        getTimeGraphViewer().getTimeGraphControl().setRedraw(true);
                     }
-                    getTimeGraphViewer().getTimeGraphControl().setRedraw(false);
-                    if (inputChanged) {
-                        fTimeGraphWrapper.setInput(fEntryList);
-                        /* restore the previously saved filters, if any */
-                        fTimeGraphWrapper.setFilters(fFiltersMap.get(fTrace));
-                        fTimeGraphWrapper.getTimeGraphViewer().setLinks(null);
-                        fTimeGraphWrapper.getTimeGraphViewer().setBookmarks(refreshBookmarks(fEditorFile));
-                        fTimeGraphWrapper.getTimeGraphViewer().setMarkerCategories(getMarkerCategories());
-                        fTimeGraphWrapper.getTimeGraphViewer().setMarkers(null);
-                        applyViewContext();
-                    } else {
-                        fTimeGraphWrapper.refresh();
-                    }
-                    // reveal selection
-                    if (fIsRevealSelection) {
-                        fIsRevealSelection = false;
-                        ITimeGraphEntry entry1 = fTimeGraphWrapper.getSelection();
-                        fTimeGraphWrapper.setSelection(entry1);
-                    }
-                } finally {
-                    if (combo != null) {
-                        combo.getTreeViewer().getTree().setRedraw(true);
-                    }
-                    getTimeGraphViewer().getTimeGraphControl().setRedraw(true);
-                }
-                long startBound = (fStartTime == Long.MAX_VALUE ? SWT.DEFAULT : fStartTime);
-                long endBound = (fEndTime == Long.MIN_VALUE ? SWT.DEFAULT : fEndTime);
-                fTimeGraphWrapper.getTimeGraphViewer().setTimeBounds(startBound, endBound);
+                    long startBound = (fStartTime == Long.MAX_VALUE ? SWT.DEFAULT : fStartTime);
+                    long endBound = (fEndTime == Long.MIN_VALUE ? SWT.DEFAULT : fEndTime);
+                    fTimeGraphWrapper.getTimeGraphViewer().setTimeBounds(startBound, endBound);
 
-                TmfTraceContext ctx = TmfTraceManager.getInstance().getCurrentTraceContext();
-                long selectionBeginTime = fTrace == null ? SWT.DEFAULT : ctx.getSelectionRange().getStartTime().toNanos();
-                long selectionEndTime = fTrace == null ? SWT.DEFAULT : ctx.getSelectionRange().getEndTime().toNanos();
-                long startTime = fTrace == null ? SWT.DEFAULT : ctx.getWindowRange().getStartTime().toNanos();
-                long endTime = fTrace == null ? SWT.DEFAULT : ctx.getWindowRange().getEndTime().toNanos();
-                startTime = (fStartTime == Long.MAX_VALUE ? SWT.DEFAULT : Math.max(startTime, fStartTime));
-                endTime = (fEndTime == Long.MIN_VALUE ? SWT.DEFAULT : Math.min(endTime, fEndTime));
-                fTimeGraphWrapper.getTimeGraphViewer().setSelectionRange(selectionBeginTime, selectionEndTime, false);
-                fTimeGraphWrapper.getTimeGraphViewer().setStartFinishTime(startTime, endTime);
+                    TmfTraceContext ctx = TmfTraceManager.getInstance().getCurrentTraceContext();
+                    long selectionBeginTime = fTrace == null ? SWT.DEFAULT : ctx.getSelectionRange().getStartTime().toNanos();
+                    long selectionEndTime = fTrace == null ? SWT.DEFAULT : ctx.getSelectionRange().getEndTime().toNanos();
+                    long startTime = fTrace == null ? SWT.DEFAULT : ctx.getWindowRange().getStartTime().toNanos();
+                    long endTime = fTrace == null ? SWT.DEFAULT : ctx.getWindowRange().getEndTime().toNanos();
+                    startTime = (fStartTime == Long.MAX_VALUE ? SWT.DEFAULT : Math.max(startTime, fStartTime));
+                    endTime = (fEndTime == Long.MIN_VALUE ? SWT.DEFAULT : Math.min(endTime, fEndTime));
+                    fTimeGraphWrapper.getTimeGraphViewer().setSelectionRange(selectionBeginTime, selectionEndTime, false);
+                    fTimeGraphWrapper.getTimeGraphViewer().setStartFinishTime(startTime, endTime);
 
-                if (inputChanged && selectionBeginTime != SWT.DEFAULT) {
-                    synchingToTime(selectionBeginTime);
-                }
-
-                if (fTimeGraphWrapper instanceof TimeGraphComboWrapper && !fPackDone) {
-                    for (TreeColumn column : ((TimeGraphComboWrapper) fTimeGraphWrapper).getTreeViewer().getTree().getColumns()) {
-                        column.pack();
+                    if (inputChanged && selectionBeginTime != SWT.DEFAULT) {
+                        synchingToTime(selectionBeginTime);
                     }
-                    if (hasEntries) {
-                        fPackDone = true;
-                    }
-                }
 
-                if (!zoomThread) {
-                    startZoomThread(startTime, endTime);
+                    if (fTimeGraphWrapper instanceof TimeGraphComboWrapper && !fPackDone) {
+                        for (TreeColumn column : ((TimeGraphComboWrapper) fTimeGraphWrapper).getTreeViewer().getTree().getColumns()) {
+                            column.pack();
+                        }
+                        if (hasEntries) {
+                            fPackDone = true;
+                        }
+                    }
+
+                    if (!zoomThread) {
+                        startZoomThread(startTime, endTime);
+                    }
+                    fDirty.decrementAndGet();
                 }
-                fDirty.decrementAndGet();
-                LOGGER.info(() -> getLogMessage("RefreshEnd", null)); //$NON-NLS-1$
             }
         });
     }
@@ -1981,21 +1995,22 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
         Display.getDefault().asyncExec(new Runnable() {
             @Override
             public void run() {
-                LOGGER.info(() -> getLogMessage("RedrawStart", null)); //$NON-NLS-1$
-                if (fTimeGraphWrapper.isDisposed()) {
-                    return;
-                }
-                fTimeGraphWrapper.redraw();
-                fTimeGraphWrapper.update();
-                synchronized (fSyncObj) {
-                    if (fRedrawState == State.PENDING) {
-                        fRedrawState = State.IDLE;
-                        redraw();
-                    } else {
-                        fRedrawState = State.IDLE;
+                try (TraceCompassLogUtils.ScopeLog log = new TraceCompassLogUtils.ScopeLog(LOGGER, Level.INFO, "TimeGraphView:Redraw")) { //$NON-NLS-1$
+                    LOGGER.info(() -> getLogMessage("RedrawStart", null)); //$NON-NLS-1$
+                    if (fTimeGraphWrapper.isDisposed()) {
+                        return;
+                    }
+                    fTimeGraphWrapper.redraw();
+                    fTimeGraphWrapper.update();
+                    synchronized (fSyncObj) {
+                        if (fRedrawState == State.PENDING) {
+                            fRedrawState = State.IDLE;
+                            redraw();
+                        } else {
+                            fRedrawState = State.IDLE;
+                        }
                     }
                 }
-                LOGGER.info(() -> getLogMessage("RedrawEnd", null)); //$NON-NLS-1$
             }
         });
     }
@@ -2083,7 +2098,8 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     /**
      * Add actions to local tool bar manager
      *
-     * @param manager the tool bar manager
+     * @param manager
+     *            the tool bar manager
      */
     protected void fillLocalToolBar(IToolBarManager manager) {
         if (fFilterColumns != null && fFilterLabelProvider != null && fFilterColumns.length > 0) {
@@ -2109,7 +2125,8 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     /**
      * Add actions to local menu manager
      *
-     * @param manager the tool bar manager
+     * @param manager
+     *            the tool bar manager
      * @since 2.0
      */
     protected void fillLocalMenu(IMenuManager manager) {
@@ -2179,11 +2196,13 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
         }
 
         if (fZoomThread == null) {
-            // The zoom thread is null but we might be just about to create it (refresh called).
+            // The zoom thread is null but we might be just about to create it
+            // (refresh called).
             return fDirty.get() != 0;
         }
         // Dirty if the zoom thread is not done or if it hasn't zoomed all the
-        // way to the end of the window range. In the latter case, there should be
+        // way to the end of the window range. In the latter case, there should
+        // be
         // a subsequent zoom thread that will be triggered.
         return fDirty.get() != 0 || fZoomThread.getZoomStartTime() != startTime || fZoomThread.getZoomEndTime() != endTime;
     }
@@ -2244,7 +2263,6 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
         });
     }
 
-
     private void restoreViewContext() {
         TimeGraphCombo combo = getTimeGraphCombo();
         ViewContext viewContext = fViewContext.get(fTrace);
@@ -2299,18 +2317,21 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
             fSortDirection = sortDirection;
             fSelection = selection;
         }
+
         /**
          * @return the sortColumn
          */
         public int getSortColumn() {
             return fSortColumnIndex;
         }
+
         /**
          * @return the sortDirection
          */
         public int getSortDirection() {
             return fSortDirection;
         }
+
         /**
          * @return the selection
          */
@@ -2322,8 +2343,7 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
     /**
      * Method to reset the view internal data for a given trace.
      *
-     * When overriding this method make sure to call the super
-     * implementation.
+     * When overriding this method make sure to call the super implementation.
      *
      * @param viewTrace
      *            trace to reset the view for.
@@ -2371,10 +2391,10 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
                 public void menuDetected(MenuDetectEvent event) {
                     Point p = timeGraphControl.toControl(event.x, event.y);
                     /*
-                     * The TimeGraphControl will call the TimeGraphEntryMenuListener
-                     * before the TimeEventMenuListener. If the event is
-                     * triggered on the namespace then show the menu else
-                     * clear the menu.
+                     * The TimeGraphControl will call the
+                     * TimeGraphEntryMenuListener before the
+                     * TimeEventMenuListener. If the event is triggered on the
+                     * namespace then show the menu else clear the menu.
                      */
                     if (p.x < getTimeGraphViewer().getNameSpace()) {
                         timeGraphControl.setMenu(entryMenu);
@@ -2399,10 +2419,10 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
      * Fill context menu
      *
      * @param menuManager
-     *          a menuManager to fill
+     *            a menuManager to fill
      * @since 2.0
      */
-    protected void fillTimeGraphEntryContextMenu (@NonNull IMenuManager menuManager) {
+    protected void fillTimeGraphEntryContextMenu(@NonNull IMenuManager menuManager) {
     }
 
     /*
@@ -2444,6 +2464,7 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
             // Notify action for all parts
             FIND_ACTION.partActivated(part);
         }
+
         @Override
         public void partDeactivated(IWorkbenchPart part) {
             if ((part == AbstractTimeGraphView.this) && (fFindHandlerActivation != null)) {
@@ -2452,12 +2473,15 @@ public abstract class AbstractTimeGraphView extends TmfView implements ITmfTimeA
                 fFindHandlerActivation = null;
             }
         }
+
         @Override
         public void partBroughtToTop(IWorkbenchPart part) {
         }
+
         @Override
         public void partClosed(IWorkbenchPart part) {
         }
+
         @Override
         public void partOpened(IWorkbenchPart part) {
         }
