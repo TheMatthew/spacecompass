@@ -23,7 +23,12 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.tracecompass.common.core.log.TraceCompassLog;
+import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils.ScopeLog;
 import org.eclipse.tracecompass.internal.tmf.core.TmfCoreTracer;
 import org.eclipse.tracecompass.internal.tmf.core.component.TmfEventThread;
 import org.eclipse.tracecompass.tmf.core.request.ITmfEventRequest.ExecutionType;
@@ -41,6 +46,8 @@ import org.eclipse.tracecompass.tmf.core.request.ITmfEventRequest.ExecutionType;
  * @version 1.1
  */
 public class TmfRequestExecutor implements Executor {
+
+    private static final @NonNull Logger LOGGER = TraceCompassLog.getLogger(TmfRequestExecutor.class);
 
     // ------------------------------------------------------------------------
     // Constants
@@ -77,7 +84,8 @@ public class TmfRequestExecutor implements Executor {
      * Default constructor
      */
     public TmfRequestExecutor() {
-        // We know the canonical name is not null because we use ExecutorService only
+        // We know the canonical name is not null because we use ExecutorService
+        // only
         String canonicalName = checkNotNull(fExecutor.getClass().getCanonicalName());
         fExecutorName = canonicalName.substring(canonicalName.lastIndexOf('.') + 1);
         if (TmfCoreTracer.isComponentTraced()) {
@@ -125,7 +133,7 @@ public class TmfRequestExecutor implements Executor {
 
         // We are expecting MyEventThread:s
         if (!(command instanceof TmfEventThread)) {
-            // TODO: Log an error
+            LOGGER.log(Level.WARNING, "Trying to run a runnable that is not a TmfEventThread : " + command.toString()); //$NON-NLS-1$
             return;
         }
 
@@ -134,8 +142,8 @@ public class TmfRequestExecutor implements Executor {
         TmfEventThread wrapper = new TmfEventThread(thread) {
             @Override
             public void run() {
-                try {
-                    command.run();
+                try (ScopeLog log = new ScopeLog(LOGGER, Level.FINE, "Execute Request", "thread", thread.getThread(), "execution type", thread.getExecType())) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                    thread.run();
                 } finally {
                     scheduleNext();
                 }
@@ -303,9 +311,8 @@ public class TmfRequestExecutor implements Executor {
     // ------------------------------------------------------------------------
 
     @Override
-    @SuppressWarnings("nls")
     public String toString() {
-        return "[TmfRequestExecutor(" + fExecutorName + ")]";
+        return "[TmfRequestExecutor(" + fExecutorName + ")]"; //$NON-NLS-1$ //$NON-NLS-2$
     }
 
 }
