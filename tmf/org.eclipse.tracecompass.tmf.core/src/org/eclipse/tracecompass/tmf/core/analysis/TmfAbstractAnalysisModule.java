@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -34,6 +36,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.tracecompass.common.core.NonNullUtils;
+import org.eclipse.tracecompass.common.core.log.TraceCompassLog;
+import org.eclipse.tracecompass.common.core.log.TraceCompassLogUtils;
 import org.eclipse.tracecompass.internal.tmf.core.Activator;
 import org.eclipse.tracecompass.internal.tmf.core.TmfCoreTracer;
 import org.eclipse.tracecompass.tmf.core.analysis.requirements.TmfAbstractAnalysisRequirement;
@@ -57,6 +61,7 @@ import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
 public abstract class TmfAbstractAnalysisModule extends TmfComponent
         implements IAnalysisModule, ITmfPropertiesProvider {
 
+    private static final Logger LOGGER = TraceCompassLog.getLogger(TmfAbstractAnalysisModule.class);
     private @Nullable String fId;
     private boolean fAutomatic = false, fStarted = false;
     private volatile @Nullable ITmfTrace fTrace;
@@ -344,6 +349,7 @@ public abstract class TmfAbstractAnalysisModule extends TmfComponent
         fJob = new Job(jobName) {
             @Override
             protected @Nullable IStatus run(final @Nullable IProgressMonitor monitor) {
+                TraceCompassLogUtils.traceAsyncNested(LOGGER, Level.INFO, fId, "analysis", 0); //$NON-NLS-1$
                 IProgressMonitor mon = monitor;
                 if (mon == null) {
                     mon = new NullProgressMonitor();
@@ -366,12 +372,12 @@ public abstract class TmfAbstractAnalysisModule extends TmfComponent
                     }
                     TmfTraceManager.refreshSupplementaryFiles(trace);
                 }
-                if (!fAnalysisCancelled) {
-                    return Status.OK_STATUS;
+                if (fAnalysisCancelled) {
+                    // Reset analysis so that it can be executed again.
+                    resetAnalysis();
                 }
-                // Reset analysis so that it can be executed again.
-                resetAnalysis();
-                return Status.CANCEL_STATUS;
+                TraceCompassLogUtils.traceAsyncEnd(LOGGER, Level.INFO, fId, "analysis", 0); //$NON-NLS-1$
+                return fAnalysisCancelled?Status.CANCEL_STATUS:Status.OK_STATUS;
             }
 
             @Override
@@ -392,6 +398,7 @@ public abstract class TmfAbstractAnalysisModule extends TmfComponent
                 return new Status(IStatus.ERROR, Activator.PLUGIN_ID, String.format("No trace specified for analysis %s", getName())); //$NON-NLS-1$
             }
             TmfCoreTracer.traceAnalysis(getId(), getTrace(), "scheduled"); //$NON-NLS-1$
+            TraceCompassLogUtils.traceAsyncStart(LOGGER, Level.INFO, fId, "analysis", 0); //$NON-NLS-1$
             execute(trace);
         }
 
