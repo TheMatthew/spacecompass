@@ -8,11 +8,11 @@ import org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace;
 import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
 
-public class ChromiumSegmentStore implements ISegmentStore<@NonNull ISegment> {
+public class TraceEventSegmentStore implements ISegmentStore<@NonNull ISegment> {
 
     private ChromiumTrace fTrace;
 
-    public ChromiumSegmentStore(ChromiumTrace trace) {
+    public TraceEventSegmentStore(ChromiumTrace trace) {
         fTrace = trace;
     }
 
@@ -33,7 +33,7 @@ public class ChromiumSegmentStore implements ISegmentStore<@NonNull ISegment> {
 
     @Override
     public Iterator<@NonNull ISegment> iterator() {
-        return new ChromiumIterator(Long.MIN_VALUE, Long.MAX_VALUE, fTrace);
+        return new TraceEventIterator(Long.MIN_VALUE, Long.MAX_VALUE, fTrace);
     }
 
     @Override
@@ -43,7 +43,7 @@ public class ChromiumSegmentStore implements ISegmentStore<@NonNull ISegment> {
 
     @Override
     public <T> T @NonNull [] toArray(T @NonNull [] a) {
-        return (T @NonNull []) new ChromiumSegment[0];
+        return (T @NonNull []) new TraceEventSegment[0];
     }
 
     @Override
@@ -82,7 +82,7 @@ public class ChromiumSegmentStore implements ISegmentStore<@NonNull ISegment> {
 
     @Override
     public @NonNull Iterable<@NonNull ISegment> getIntersectingElements(long start, long end) {
-        return new ChromiumIterable(start, end, fTrace);
+        return new TraceEventIterable(start, end, fTrace);
     }
 
     @Override

@@ -16,10 +16,10 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import com.google.common.collect.ImmutableSet;
 
 /**
- * Call-stack analysis to populate the TMF CallStack View from UST cyg-profile
- * events.
+ * Call-stack analysis to populate the TMF CallStack View from Trace Event
+ * events
  *
- * @author Alexandre Montplaisir
+ * @author Matthew khouzam
  */
 public class ChromiumCallstackAnalysis extends CallStackAnalysis {
 

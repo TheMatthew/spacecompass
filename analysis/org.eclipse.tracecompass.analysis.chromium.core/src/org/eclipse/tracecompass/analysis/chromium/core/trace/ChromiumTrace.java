@@ -16,8 +16,11 @@ import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.internal.analysis.chromium.core.Activator;
-import org.eclipse.tracecompass.internal.analysis.chromium.core.event.ChromiumEvent;
+import org.eclipse.tracecompass.internal.analysis.chromium.core.event.TraceEventAspects;
+import org.eclipse.tracecompass.internal.analysis.chromium.core.event.TraceEventEvent;
+import org.eclipse.tracecompass.internal.analysis.chromium.core.event.TraceEventField;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
+import org.eclipse.tracecompass.tmf.core.event.aspect.ITmfEventAspect;
 import org.eclipse.tracecompass.tmf.core.exceptions.TmfTraceException;
 import org.eclipse.tracecompass.tmf.core.io.BufferedRandomAccessFile;
 import org.eclipse.tracecompass.tmf.core.project.model.ITmfPropertiesProvider;
@@ -71,8 +74,8 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
             String line = readNextEventString(rafile);
             while ((line != null) && (lineCount++ < MAX_LINES)) {
                 try {
-                    ITmfEvent event = ChromiumEvent.parse(this, lineCount, line);
-                    if (event != null) {
+                    TraceEventField field = TraceEventEvent.parseJson(line);
+                    if (field != null) {
                         matches++;
                     }
                 } catch (RuntimeException e) {
@@ -117,10 +120,12 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
 
     @Override
     public synchronized void dispose() {
-        try {
-            fFileInput.close();
-        } catch (IOException e) {
-            Activator.getInstance().logError("Error disposing trace. File: " + getPath(), e); //$NON-NLS-1$
+        if (fFileInput != null) {
+            try {
+                fFileInput.close();
+            } catch (IOException e) {
+                Activator.getInstance().logError("Error disposing trace. File: " + getPath(), e); //$NON-NLS-1$
+            }
         }
         super.dispose();
 
@@ -169,6 +174,11 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
     }
 
     @Override
+    public Iterable<ITmfEventAspect<?>> getEventAspects() {
+        return TraceEventAspects.getAspects();
+    }
+
+    @Override
     public ITmfEvent parseEvent(ITmfContext context) {
         @Nullable
         ITmfLocation location = context.getLocation();
@@ -183,7 +193,11 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
                     if (!locationInfo.equals(fFileInput.getFilePointer())) {
                         fFileInput.seek(locationInfo);
                     }
-                    return ChromiumEvent.parse(this, context.getRank(), readNextEventString(fFileInput));
+                    String nextJson = readNextEventString(fFileInput);
+                    if (nextJson != null) {
+                        TraceEventField field = TraceEventEvent.parseJson(nextJson);
+                        return new TraceEventEvent(this, context.getRank(), field);
+                    }
                 } catch (IOException e) {
                     Activator.getInstance().logError("Error parsing event", e); //$NON-NLS-1$
                 }
