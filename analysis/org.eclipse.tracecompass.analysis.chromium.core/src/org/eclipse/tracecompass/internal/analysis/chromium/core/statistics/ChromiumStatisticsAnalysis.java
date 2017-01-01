@@ -5,8 +5,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace;
 import org.eclipse.tracecompass.analysis.timing.core.segmentstore.ISegmentStoreProvider;
 import org.eclipse.tracecompass.analysis.timing.core.segmentstore.statistics.AbstractSegmentStatisticsAnalysis;
-import org.eclipse.tracecompass.internal.analysis.chromium.core.segment.ChromiumSegment;
-import org.eclipse.tracecompass.internal.analysis.chromium.core.segment.ChromiumSegmentProvider;
+import org.eclipse.tracecompass.internal.analysis.chromium.core.segment.TraceEventSegment;
+import org.eclipse.tracecompass.internal.analysis.chromium.core.segment.TraceEventSegmentProvider;
 import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 
@@ -16,8 +16,8 @@ public class ChromiumStatisticsAnalysis extends AbstractSegmentStatisticsAnalysi
 
     @Override
     protected @Nullable String getSegmentType(@NonNull ISegment segment) {
-        if(segment instanceof ChromiumSegment){
-            return ((ChromiumSegment) segment).getType();
+        if(segment instanceof TraceEventSegment){
+            return ((TraceEventSegment) segment).getType();
         }
         return "UNKNOWN";
     }
@@ -25,7 +25,7 @@ public class ChromiumStatisticsAnalysis extends AbstractSegmentStatisticsAnalysi
     @Override
     protected @Nullable ISegmentStoreProvider getSegmentProviderAnalysis(@NonNull ITmfTrace trace) {
         if (trace instanceof ChromiumTrace) {
-            return new ChromiumSegmentProvider((ChromiumTrace) trace);
+            return new TraceEventSegmentProvider((ChromiumTrace) trace);
         }
         return null;
     }
