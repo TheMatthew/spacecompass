@@ -4,12 +4,12 @@ import java.util.Iterator;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace;
-import org.eclipse.tracecompass.internal.analysis.chromium.core.event.ChromiumEvent;
+import org.eclipse.tracecompass.internal.analysis.chromium.core.event.TraceEventEvent;
 import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.tmf.core.timestamp.TmfTimestamp;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfContext;
 
-public class ChromiumIterator implements Iterator<@NonNull ISegment> {
+public class TraceEventIterator implements Iterator<@NonNull ISegment> {
 
     private static final ISegment INVALID = new ISegment() {
 
@@ -38,15 +38,15 @@ public class ChromiumIterator implements Iterator<@NonNull ISegment> {
      * @param end
      * @param trace
      */
-    public ChromiumIterator(long start, long end, ChromiumTrace trace) {
+    public TraceEventIterator(long start, long end, ChromiumTrace trace) {
         fEnd = end;
         fTrace = trace;
         fSeg = INVALID;
         fContext = trace.seekEvent(TmfTimestamp.fromNanos(start));
         while (INVALID.equals(fSeg) || fSeg.getStart() < start) {
-            ChromiumEvent evt = (ChromiumEvent) fTrace.getNext(fContext);
+            TraceEventEvent evt = (TraceEventEvent) fTrace.getNext(fContext);
             if (evt != null) {
-                fSeg = ChromiumSegment.create(evt);
+                fSeg = TraceEventSegment.create(evt);
             } else {
                 fSeg = INVALID;
             }
@@ -67,12 +67,12 @@ public class ChromiumIterator implements Iterator<@NonNull ISegment> {
         fSeg = INVALID;
         ISegment segment = INVALID;
         while (INVALID.equals(segment)) {
-            ChromiumEvent evt = (ChromiumEvent) fTrace.getNext(fContext);
+            TraceEventEvent evt = (TraceEventEvent) fTrace.getNext(fContext);
             if (evt == null) {
                 fSeg = INVALID;
                 return INVALID;
             }
-            segment = ChromiumSegment.create(evt);
+            segment = TraceEventSegment.create(evt);
             if (segment == null) {
                 segment = INVALID;
             }

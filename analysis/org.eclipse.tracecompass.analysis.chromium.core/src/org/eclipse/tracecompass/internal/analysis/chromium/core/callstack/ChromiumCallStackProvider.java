@@ -9,8 +9,7 @@ import java.util.TreeMap;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.tracecompass.internal.analysis.chromium.core.event.ChromiumEvent;
-import org.eclipse.tracecompass.internal.analysis.chromium.core.event.ChromiumFields.Phase;
+import org.eclipse.tracecompass.internal.analysis.chromium.core.event.TraceEventEvent;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue;
 import org.eclipse.tracecompass.statesystem.core.statevalue.TmfStateValue;
@@ -29,7 +28,7 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
         super(trace);
         ITmfStateSystemBuilder stateSystemBuilder = getStateSystemBuilder();
         if (stateSystemBuilder != null) {
-            int quark = stateSystemBuilder.getQuarkAbsoluteAndAdd("dummy entry to make gpu entries work");
+            int quark = stateSystemBuilder.getQuarkAbsoluteAndAdd("dummy entry to make gpu entries work"); //$NON-NLS-1$
             stateSystemBuilder.modifyAttribute(0, TmfStateValue.newValueInt(0), quark);
         }
         fSafeTime = trace.getStartTime();
@@ -37,7 +36,7 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
 
     @Override
     protected @Nullable String getProcessName(@NonNull ITmfEvent event) {
-        String pName = event.getContent().getFieldValue(String.class, "pid");
+        String pName = event.getContent().getFieldValue(String.class, "pid"); //$NON-NLS-1$
 
         if (pName == null) {
             int processId = getProcessId(event);
@@ -49,20 +48,20 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
 
     @Override
     protected int getProcessId(@NonNull ITmfEvent event) {
-        Integer fieldValue = event.getContent().getFieldValue(Integer.class, "pid");
+        Integer fieldValue = event.getContent().getFieldValue(Integer.class, "pid"); //$NON-NLS-1$
         return fieldValue == null ? -1 : fieldValue.intValue();
     }
 
     @Override
     protected long getThreadId(@NonNull ITmfEvent event) {
-        Integer fieldValue = event.getContent().getFieldValue(Integer.class, "tid");
+        Integer fieldValue = event.getContent().getFieldValue(Integer.class, "tid"); //$NON-NLS-1$
         return fieldValue == null ? -1 : fieldValue.intValue();
 
     }
 
     @Override
     public int getVersion() {
-        return 0;
+        return 1;
     }
 
     @Override
@@ -72,12 +71,12 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
 
     @Override
     protected boolean considerEvent(@NonNull ITmfEvent event) {
-        return (event instanceof ChromiumEvent);
+        return (event instanceof TraceEventEvent);
     }
 
     @Override
     protected @Nullable ITmfStateValue functionEntry(@NonNull ITmfEvent event) {
-        if (event instanceof ChromiumEvent && Phase.Begin.equals(((ChromiumEvent) event).getPhase())) {
+        if (event instanceof TraceEventEvent && 'B' == (((TraceEventEvent) event).getField().getPhase())) {
             return TmfStateValue.newValueString(event.getName());
         }
         return null;
@@ -85,7 +84,7 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
 
     @Override
     protected @Nullable ITmfStateValue functionExit(@NonNull ITmfEvent event) {
-        if (event instanceof ChromiumEvent && Phase.End.equals(((ChromiumEvent) event).getPhase())) {
+        if (event instanceof TraceEventEvent && 'E' == (((TraceEventEvent) event).getField().getPhase())) {
             return TmfStateValue.newValueString(event.getName());
         }
         return null;
@@ -113,29 +112,25 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
                 }
             }
         }
-        ChromiumEvent chrEvent = (ChromiumEvent) event;
+        TraceEventEvent traceEvent = (TraceEventEvent) event;
         String processName = getProcessName(event);
-        Phase ph = chrEvent.getPhase();
-        if (ph == null) {
-            return;
-        }
-
+        char ph = traceEvent.getField().getPhase();
         switch (ph) {
-        case Begin:
+        case 'B':
             ITmfStateValue functionBeginName = functionEntry(event);
             if (functionBeginName != null) {
                 startHandle(event, ss, timestamp, processName, functionBeginName);
             }
             break;
 
-        case Complete:
-            Long duration = event.getContent().getFieldValue(Long.class, "dur");
-            if (duration != null && duration >= 0L) {
-                handleComplete(chrEvent, ss, processName);
+        case 'X':
+            Double duration = event.getContent().getFieldValue(Double.class, "dur"); //$NON-NLS-1$
+            if (duration != null && Double.isFinite(duration)) {
+                handleComplete(traceEvent, ss, processName);
             }
             break;
 
-        case End:
+        case 'E':
             /* Check if the event is a function exit */
             ITmfStateValue functionExitState = functionExit(event);
             if (functionExitState != null) {
@@ -143,7 +138,7 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
             }
             break;
 
-        case Start:
+        case 'b':
             ITmfStateValue functionStartName = functionEntry(event);
             if (functionStartName != null) {
                 startHandle(event, ss, timestamp, processName, functionStartName);
@@ -163,7 +158,7 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
      * @param ss
      * @param processName
      */
-    private void handleComplete(ChromiumEvent event, ITmfStateSystemBuilder ss, String processName) {
+    private void handleComplete(ITmfEvent event, ITmfStateSystemBuilder ss, String processName) {
 
         ITmfTimestamp timestamp = event.getTimestamp();
         fSafeTime = fSafeTime.compareTo(timestamp) > 0 ? fSafeTime : timestamp;
@@ -174,7 +169,11 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
         }
         int processQuark = ss.getQuarkAbsoluteAndAdd(PROCESSES, processName_);
         long startTime = event.getTimestamp().toNanos();
-        long end = event.getEndTime().toNanos();
+        Double dur = event.getContent().getFieldValue(Double.class, "dur"); //$NON-NLS-1$
+        long end = startTime;
+        if (dur != null) {
+            end += dur * 1000;
+        }
         String threadName = getThreadName(event);
         long threadId = getThreadId(event);
         if (threadName == null) {

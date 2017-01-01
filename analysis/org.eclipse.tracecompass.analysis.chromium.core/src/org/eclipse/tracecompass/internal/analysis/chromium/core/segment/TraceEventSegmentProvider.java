@@ -11,12 +11,12 @@ import org.eclipse.tracecompass.segmentstore.core.ISegment;
 import org.eclipse.tracecompass.segmentstore.core.ISegmentStore;
 import org.eclipse.tracecompass.tmf.core.segment.ISegmentAspect;
 
-public class ChromiumSegmentProvider implements ISegmentStoreProvider {
+public class TraceEventSegmentProvider implements ISegmentStoreProvider {
 
-    private final ChromiumSegmentStore fCss;
+    private final TraceEventSegmentStore fCss;
 
-    public ChromiumSegmentProvider(ChromiumTrace trace) {
-        fCss = new ChromiumSegmentStore(trace);
+    public TraceEventSegmentProvider(ChromiumTrace trace) {
+        fCss = new TraceEventSegmentStore(trace);
     }
 
     @Override

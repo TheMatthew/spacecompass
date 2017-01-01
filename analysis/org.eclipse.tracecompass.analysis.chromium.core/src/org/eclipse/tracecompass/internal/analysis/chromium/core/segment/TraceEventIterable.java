@@ -5,14 +5,14 @@ import java.util.Iterator;
 import org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace;
 import org.eclipse.tracecompass.segmentstore.core.ISegment;
 
-public class ChromiumIterable implements Iterable<ISegment> {
+public class TraceEventIterable implements Iterable<ISegment> {
 
 
     private long fStart;
     private long fEnd;
     private ChromiumTrace fTrace;
 
-    public ChromiumIterable(long start, long end, ChromiumTrace trace) {
+    public TraceEventIterable(long start, long end, ChromiumTrace trace) {
         fStart = start;
         fEnd = end;
         fTrace = trace;
@@ -20,7 +20,7 @@ public class ChromiumIterable implements Iterable<ISegment> {
 
     @Override
     public Iterator<ISegment> iterator() {
-        return new ChromiumIterator(fStart, fEnd, fTrace);
+        return new TraceEventIterator(fStart, fEnd, fTrace);
     }
 
 }
