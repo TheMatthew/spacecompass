@@ -20,11 +20,9 @@ Require-Bundle: org.eclipse.ui,
 Export-Package: org.eclipse.tracecompass.analysis.chromium.core.trace,
  org.eclipse.tracecompass.internal.analysis.chromium.core;x-internal:=true,
  org.eclipse.tracecompass.internal.analysis.chromium.core.callstack;x-internal:=true,
- org.eclipse.tracecompass.internal.analysis.chromium.core.event;x-internal:=true,
- org.eclipse.tracecompass.internal.analysis.chromium.core.segment;x-internal:=true,
- org.eclipse.tracecompass.internal.analysis.chromium.core.statistics;x-internal:=true
-Import-Package: com.google.common.annotations;version="15.0.0",
- com.google.common.base;version="15.0.0",
+ org.eclipse.tracecompass.internal.analysis.chromium.core.event;x-internal:=true
+Import-Package: com.google.common.annotations,
+ com.google.common.base,
  com.google.common.collect,
  org.apache.commons.lang3;version="3.1.0",
  org.json
