@@ -71,7 +71,7 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
         try (BufferedRandomAccessFile rafile = new BufferedRandomAccessFile(path, "r")) { //$NON-NLS-1$
             int lineCount = 0;
             int matches = 0;
-            String line = readNextEventString(rafile);
+            String line = readNextEventString(() -> (char) rafile.read());
             while ((line != null) && (lineCount++ < MAX_LINES)) {
                 try {
                     TraceEventField field = TraceEventEvent.parseJson(line);
@@ -83,7 +83,7 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
                 }
 
                 confidence = MAX_CONFIDENCE * matches / lineCount;
-                line = readNextEventString(rafile);
+                line = readNextEventString(() -> (char) rafile.read());
             }
         } catch (IOException e) {
             Activator.getInstance().logError("Error validating file: " + path, e); //$NON-NLS-1$
@@ -193,7 +193,7 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
                     if (!locationInfo.equals(fFileInput.getFilePointer())) {
                         fFileInput.seek(locationInfo);
                     }
-                    String nextJson = readNextEventString(fFileInput);
+                    String nextJson = readNextEventString(() -> (char) fFileInput.read());
                     if (nextJson != null) {
                         TraceEventField field = TraceEventEvent.parseJson(nextJson);
                         return new TraceEventEvent(this, context.getRank(), field);
@@ -231,17 +231,47 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
         return 10000;
     }
 
-    private static @Nullable String readNextEventString(RandomAccessFile parser) throws IOException {
+    public static interface IReaderWrapper {
+        char read() throws IOException;
+    }
+
+    public static @Nullable String readNextEventString(IReaderWrapper parser) throws IOException {
         StringBuffer sb = new StringBuffer();
-        char elem = (char) parser.read();
-        if (elem == ']') {
-            return null;
+        int scope = -1;
+        int arrScope = 0;
+        boolean inQuotes = false;
+        char elem = parser.read();
+        while (elem != (char) -1) {
+            if (elem == '"') {
+                inQuotes = !inQuotes;
+            } else {
+                if (inQuotes) {
+                    // do nothing
+                } else if (elem == '[') {
+                    arrScope++;
+                } else if (elem == ']') {
+                    if (arrScope > 0) {
+                        arrScope--;
+                    } else {
+                        return null;
+                    }
+                } else if (elem == '{') {
+                    scope++;
+                } else if (elem == '}') {
+                    if (scope > 0) {
+                        scope--;
+                    } else {
+                        sb.append(elem);
+                        return sb.toString();
+                    }
+                }
+            }
+            if (scope >= 0) {
+                sb.append(elem);
+            }
+            elem = parser.read();
         }
-        while (elem != '}' && elem != ']' && elem != (char) -1) {
-            elem = (char) parser.read();
-            sb.append(elem);
-        }
-        return (elem == '}') ? sb.toString() : null;
+        return null;
     }
 
 }
