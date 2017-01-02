@@ -25,6 +25,7 @@ import org.eclipse.tracecompass.tmf.core.exceptions.TmfTraceException;
 import org.eclipse.tracecompass.tmf.core.io.BufferedRandomAccessFile;
 import org.eclipse.tracecompass.tmf.core.project.model.ITmfPropertiesProvider;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfContext;
+import org.eclipse.tracecompass.tmf.core.trace.ITmfTraceKnownSize;
 import org.eclipse.tracecompass.tmf.core.trace.TmfContext;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceManager;
@@ -38,7 +39,7 @@ import org.eclipse.tracecompass.tmf.core.trace.location.TmfLongLocation;
  * @author matthew
  *
  */
-public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable, ITmfPropertiesProvider {
+public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable, ITmfPropertiesProvider, ITmfTraceKnownSize {
 
     private static final int ESTIMATED_EVENT_SIZE = 90;
     private static final TmfLongLocation NULL_LOCATION = new TmfLongLocation(-1L);
@@ -272,6 +273,36 @@ public class ChromiumTrace extends TmfTrace implements ITmfPersistentlyIndexable
             elem = parser.read();
         }
         return null;
+    }
+
+    @Override
+    public int size() {
+        RandomAccessFile fileInput = fFileInput;
+        if (fileInput == null) {
+            return 0;
+        }
+        long length = 0;
+        try {
+            length = fileInput.length();
+        } catch (IOException e) {
+            // swallow it for now
+        }
+        return length > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) length;
+    }
+
+    @Override
+    public int progress() {
+        RandomAccessFile fileInput = fFileInput;
+        if (fileInput == null) {
+            return 0;
+        }
+        long length = 0;
+        try {
+            length = fileInput.getFilePointer();
+        } catch (IOException e) {
+            // swallow it for now
+        }
+        return length > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) length;
     }
 
 }
