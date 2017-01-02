@@ -11,3 +11,14 @@ jdk:
 
 sudo: false
 script: mvn clean install -Dmaven.test.skip=true
+
+deploy:
+  provider: releases
+  api_key: 
+	secure:
+  file:
+   - "rcp/org.eclipse.tracecompass.rcp.product/target/products/trace-compass-*.tar.gz"
+   - "rcp/org.eclipse.tracecompass.rcp.product/target/products/trace-compass-*.zip"
+  skip_cleanup: true
+  on:
+    tags: true
