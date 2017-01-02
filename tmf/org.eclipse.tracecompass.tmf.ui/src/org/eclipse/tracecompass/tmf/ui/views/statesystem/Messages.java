@@ -39,7 +39,7 @@ public class Messages extends NLS {
     /**
      * Label for the "duration" column
      *
-     * @since 2.2
+     * @since 2.3
      */
     public static String DurationColumnLabel;
 
