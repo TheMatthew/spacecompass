@@ -126,9 +126,13 @@ final class SortingJob extends Job {
             List<BufferedInputStream> parsers = new ArrayList<>();
             int i = 0;
             for (File traceling : tracelings) {
+                @SuppressWarnings("resource")
                 BufferedInputStream createParser = new BufferedInputStream(new FileInputStream(traceling));
                 while (data != '{') {
                     data = (char) parser.read();
+                    if (data == (char) -1) {
+                        break;
+                    }
                 }
                 eventString = ChromiumTrace.readNextEventString(() -> (char) createParser.read());
                 Pair parse = new Pair(eventString, i);
