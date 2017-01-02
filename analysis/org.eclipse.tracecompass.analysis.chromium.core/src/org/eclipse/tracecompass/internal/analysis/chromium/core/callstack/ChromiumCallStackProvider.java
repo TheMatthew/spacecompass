@@ -9,6 +9,7 @@ import java.util.TreeMap;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.internal.analysis.chromium.core.event.ITraceEventConstants;
 import org.eclipse.tracecompass.internal.analysis.chromium.core.event.TraceEventEvent;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue;
@@ -63,13 +64,13 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
 
     @Override
     protected int getProcessId(@NonNull ITmfEvent event) {
-        Integer fieldValue = event.getContent().getFieldValue(Integer.class, "pid"); //$NON-NLS-1$
+        Integer fieldValue = event.getContent().getFieldValue(Integer.class, ITraceEventConstants.PID);
         return fieldValue == null ? -1 : fieldValue.intValue();
     }
 
     @Override
     protected long getThreadId(@NonNull ITmfEvent event) {
-        Integer fieldValue = event.getContent().getFieldValue(Integer.class, "tid"); //$NON-NLS-1$
+        Integer fieldValue = event.getContent().getFieldValue(Integer.class, ITraceEventConstants.TID);
         return fieldValue == null ? -1 : fieldValue.intValue();
 
     }
@@ -208,7 +209,7 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
 
     }
 
-    private void startHandle(ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName, ITmfStateValue functionEntryName) {
+    private void startHandle(@NonNull ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName, ITmfStateValue functionEntryName) {
         int processQuark = ss.getQuarkAbsoluteAndAdd(PROCESSES, processName);
 
         String threadName = getThreadName(event);
@@ -223,7 +224,7 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
         ss.pushAttribute(timestamp, value, callStackQuark);
     }
 
-    private void endHandle(ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName) {
+    private void endHandle(@NonNull ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName) {
         String pName = processName;
 
         if (pName == null) {
