@@ -24,7 +24,11 @@ final class SortingJob extends Job {
         public Pair(String string, int i) {
             line = string;
             String key = "\"ts\":"; //$NON-NLS-1$
-            int index = string.indexOf(key) + key.length();
+            int indexOf = string.indexOf(key);
+            if (indexOf == -1) {
+                throw new IllegalStateException("invalid string " + string); //$NON-NLS-1$
+            }
+            int index = indexOf + key.length();
             int end = string.indexOf(',', index);
             String number = string.substring(index, end);
             ts = 0;
@@ -71,28 +75,30 @@ final class SortingJob extends Job {
         List<File> tracelings = new ArrayList<>();
         try (BufferedInputStream parser = new BufferedInputStream(new FileInputStream(fPath))) {
             char data = (char) parser.read();
-            while (data != '{') {
+            while (data != '[') {
                 data = (char) parser.read();
             }
             List<Pair> events = new ArrayList<>(CHUNK_SIZE);
-            Pair line = readNextEvent(parser, 0);
-            if (line == null) {
+            String eventString = ChromiumTrace.readNextEventString(() -> (char) parser.read());
+            if (eventString == null) {
                 return new Status(IStatus.ERROR, "trace", "null");
             }
-            line.line = data + "\"" + line.line;
+            Pair line = new Pair(eventString, 0);
+            line.line = data + '"' + line.line;
             int cnt = 0;
             int filen = 0;
-            while (line != null) {
+            while (eventString != null) {
                 while (cnt < CHUNK_SIZE) {
                     events.add(line);
                     monitor.worked(1);
                     if (monitor.isCanceled()) {
                         return Status.CANCEL_STATUS;
                     }
-                    line = readNextEvent(parser, 0);
-                    if (line == null) {
+                    eventString = ChromiumTrace.readNextEventString(() -> (char) parser.read());
+                    if (eventString == null) {
                         break;
                     }
+                    line = new Pair(eventString, 0);
                     cnt++;
                 }
                 events.sort((o1, o2) -> Long.compare(o1.ts, o2.ts));
@@ -124,7 +130,8 @@ final class SortingJob extends Job {
                 while (data != '{') {
                     data = (char) parser.read();
                 }
-                Pair parse = readNextEvent(createParser, i);
+                eventString = ChromiumTrace.readNextEventString(() -> (char) createParser.read());
+                Pair parse = new Pair(eventString, i);
                 evs.add(parse);
                 i++;
                 parsers.add(createParser);
@@ -175,15 +182,8 @@ final class SortingJob extends Job {
     }
 
     private static @Nullable Pair readNextEvent(BufferedInputStream parser, int i) throws IOException {
-        StringBuffer sb = new StringBuffer();
-        char elem = (char) parser.read();
-        if (elem == ']') {
-            return null;
-        }
-        while (elem != '}' && elem != ']' && elem != (char) -1) {
-            elem = (char) parser.read();
-            sb.append(elem);
-        }
-        return (elem == '}') ? new Pair(sb.toString(), i) : null;
+        String event = ChromiumTrace.readNextEventString(() -> (char) parser.read());
+        return event == null ? null : new Pair(event, i);
+
     }
 }
