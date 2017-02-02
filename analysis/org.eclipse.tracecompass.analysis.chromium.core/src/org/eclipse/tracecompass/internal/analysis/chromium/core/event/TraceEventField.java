@@ -75,9 +75,9 @@ public class TraceEventField {
         fPhase = phase;
         Map<@NonNull String, @NonNull Object> args = fields.entrySet().stream()
                 .filter(entry -> {
-                    return entry.getKey().startsWith("args."); //$NON-NLS-1$
+                    return entry.getKey().startsWith("arg/"); //$NON-NLS-1$
                 })
-                .collect(Collectors.toMap(entry -> entry.getKey().substring(5), Entry::getValue));
+                .collect(Collectors.toMap(entry -> entry.getKey().substring(4), Entry::getValue));
         fArgs = args.isEmpty() ? null : args;
 
     }
