@@ -23,6 +23,16 @@
                class="org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace">
          </tracetype>
 	</module>
+      <module
+            analysis_module="org.eclipse.tracecompass.internal.analysis.chromium.core.counters.ChromiumCounterAnalysis"
+            automatic="true"
+            id="org.eclipse.tracecompass.analysis.chromium.core.counters"
+            name="Counter Analysis">
+         <tracetype
+               applies="true"
+               class="org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace">
+         </tracetype>
+      </module>
    </extension>
 
 </plugin>
