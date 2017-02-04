@@ -8,6 +8,8 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 
 public class ChromiumCounterAnalysis extends TmfStateSystemAnalysisModule {
 
+    public static final String ID = "org.eclipse.tracecompass.analysis.chromium.core.counters";
+
     @Override
     protected @NonNull ITmfStateProvider createStateProvider() {
         ITmfTrace trace = getTrace();
