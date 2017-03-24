@@ -15,6 +15,7 @@
 package org.eclipse.tracecompass.tmf.ui.views.callstack;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -60,6 +61,7 @@ import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue.Type;
 import org.eclipse.tracecompass.tmf.core.callstack.CallStackAnalysis;
+import org.eclipse.tracecompass.tmf.core.callstack.TimeGraphVertex;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSelectionRangeUpdatedSignal;
 import org.eclipse.tracecompass.tmf.core.signal.TmfSignalHandler;
 import org.eclipse.tracecompass.tmf.core.signal.TmfTraceClosedSignal;
@@ -81,11 +83,13 @@ import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.ITimeGraphTimeListener;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphContentProvider;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphTimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.TimeGraphViewer;
+import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ILinkEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.ITimeGraphEntry;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.NullTimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeGraphEntry;
+import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.model.TimeLinkEvent;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.TimeGraphControl;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchActionConstants;
@@ -245,8 +249,7 @@ public class CallStackView extends AbstractTimeGraphView {
 
         @Override
         public int compare(ITimeGraphEntry o1, ITimeGraphEntry o2) {
-            return reverse ? o2.getName().compareTo(o1.getName()) :
-                    o1.getName().compareTo(o2.getName());
+            return reverse ? o2.getName().compareTo(o1.getName()) : o1.getName().compareTo(o2.getName());
         }
     }
 
@@ -262,8 +265,7 @@ public class CallStackView extends AbstractTimeGraphView {
             if (o1 instanceof ThreadEntry && o2 instanceof ThreadEntry) {
                 ThreadEntry t1 = (ThreadEntry) o1;
                 ThreadEntry t2 = (ThreadEntry) o2;
-                return reverse ? Long.compare(t2.getThreadId(), t1.getThreadId()) :
-                    Long.compare(t1.getThreadId(), t2.getThreadId());
+                return reverse ? Long.compare(t2.getThreadId(), t1.getThreadId()) : Long.compare(t1.getThreadId(), t2.getThreadId());
             }
             return 0;
         }
@@ -278,8 +280,7 @@ public class CallStackView extends AbstractTimeGraphView {
 
         @Override
         public int compare(ITimeGraphEntry o1, ITimeGraphEntry o2) {
-            return reverse ? Long.compare(o2.getStartTime(), o1.getStartTime()) :
-                    Long.compare(o1.getStartTime(), o2.getStartTime());
+            return reverse ? Long.compare(o2.getStartTime(), o1.getStartTime()) : Long.compare(o1.getStartTime(), o2.getStartTime());
         }
     }
 
@@ -507,8 +508,8 @@ public class CallStackView extends AbstractTimeGraphView {
     @TmfSignalHandler
     public void traceClosed(TmfTraceClosedSignal signal) {
         super.traceClosed(signal);
-        synchronized(fSymbolProviders){
-            for(ITmfTrace trace : getTracesToBuild(signal.getTrace())){
+        synchronized (fSymbolProviders) {
+            for (ITmfTrace trace : getTracesToBuild(signal.getTrace())) {
                 fSymbolProviders.remove(trace);
             }
         }
@@ -569,7 +570,8 @@ public class CallStackView extends AbstractTimeGraphView {
                 return;
             }
             long end = ss.getCurrentEndTime();
-            if (start == end && !complete) { // when complete execute one last time regardless of end time
+            if (start == end && !complete) { // when complete execute one last
+                                             // time regardless of end time
                 continue;
             }
 
@@ -590,7 +592,8 @@ public class CallStackView extends AbstractTimeGraphView {
                 for (int processQuark : processQuarks) {
 
                     /*
-                     * Default to trace entry, overwrite if a process entry exists.
+                     * Default to trace entry, overwrite if a process entry
+                     * exists.
                      */
                     TimeGraphEntry threadParent = traceEntry;
                     int processId = -1;
@@ -640,7 +643,8 @@ public class CallStackView extends AbstractTimeGraphView {
                             threadEnd = endInterval.getStartTime();
                         }
                         /*
-                         * Default to process/trace entry, overwrite if a thread entry exists.
+                         * Default to process/trace entry, overwrite if a thread
+                         * entry exists.
                          */
                         TimeGraphEntry callStackParent = threadParent;
                         if (threadQuark != processQuark) {
@@ -671,7 +675,10 @@ public class CallStackView extends AbstractTimeGraphView {
                             } else {
                                 threadEntry.updateEndTime(threadEnd);
                             }
-                            /* The parent of the call stack entries will be a thread */
+                            /*
+                             * The parent of the call stack entries will be a
+                             * thread
+                             */
                             callStackParent = threadEntry;
                         }
                         int level = 1;
@@ -1063,8 +1070,7 @@ public class CallStackView extends AbstractTimeGraphView {
          * Since we cannot know the exact analysis ID (in separate plugins), we
          * will search using the analysis type.
          */
-        Iterable<CallStackAnalysis> modules =
-                TmfTraceUtils.getAnalysisModulesOfClass(trace, CallStackAnalysis.class);
+        Iterable<CallStackAnalysis> modules = TmfTraceUtils.getAnalysisModulesOfClass(trace, CallStackAnalysis.class);
         Iterator<CallStackAnalysis> it = modules.iterator();
         if (!it.hasNext()) {
             /* This trace does not provide a call-stack analysis */
@@ -1085,6 +1091,50 @@ public class CallStackView extends AbstractTimeGraphView {
             return null;
         }
         return module;
+    }
+
+    @Override
+    protected @Nullable List<@NonNull ILinkEvent> getLinkList(long startTime, long endTime, long resolution, @NonNull IProgressMonitor monitor) {
+        ITmfTrace trace = getTrace();
+        if (trace == null) {
+            return Collections.emptyList();
+        }
+        CallStackAnalysis module = getCallStackModule(trace);
+        List<TimeGraphEntry> entries = getEntryList(trace);
+        if (module == null || entries == null) {
+            return Collections.emptyList();
+        }
+        Collection<TimeGraphVertex> links = module.getCallstackLinks();
+        List<ILinkEvent> ret = new ArrayList<>();
+        for (TimeGraphVertex link : links) {
+            if (link.getTime() + link.getDuration() > startTime && link.getTime() < endTime) {
+                TimeGraphEntry src = find(entries, link.getSrc());
+                TimeGraphEntry dst = find(entries, link.getDst());
+                if (src != null && dst != null) {
+                    ret.add(new TimeLinkEvent(src, dst, link.getTime(), link.getDuration()));
+                }
+            }
+        }
+        return ret;
+
+    }
+
+    private static CallStackEntry find(List<TimeGraphEntry> entries, int quark) {
+        TimeGraphEntry traceEntry = entries.get(0);
+        List<@NonNull TimeGraphEntry> children = traceEntry.getChildren();
+        for (TimeGraphEntry processentry : children) {
+            for (TimeGraphEntry threadentry : processentry.getChildren()) {
+                for (TimeGraphEntry entry : threadentry.getChildren()) {
+                    if (entry instanceof CallStackEntry) {
+                        CallStackEntry callStackEntry = (CallStackEntry) entry;
+                        if (callStackEntry.getQuark() == quark) {
+                            return callStackEntry;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     // ------------------------------------------------------------------------

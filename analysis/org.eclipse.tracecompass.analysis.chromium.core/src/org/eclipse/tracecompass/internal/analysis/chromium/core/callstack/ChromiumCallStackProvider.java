@@ -2,10 +2,13 @@ package org.eclipse.tracecompass.internal.analysis.chromium.core.callstack;
 
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Stack;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
@@ -15,6 +18,7 @@ import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.statesystem.core.statevalue.ITmfStateValue;
 import org.eclipse.tracecompass.statesystem.core.statevalue.TmfStateValue;
 import org.eclipse.tracecompass.tmf.core.callstack.CallStackStateProvider;
+import org.eclipse.tracecompass.tmf.core.callstack.TimeGraphVertex;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
 import org.eclipse.tracecompass.tmf.core.timestamp.ITmfTimestamp;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
@@ -22,17 +26,44 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 /**
  * Trace event callstack provider
  *
+ * Has links, so we have a tmfGraph.
+ *
  * @author Matthew Khouzam
  *
  */
 public class ChromiumCallStackProvider extends CallStackStateProvider {
+    /**
+     * Link builder between events
+     *
+     * @author Matthew Khouzam
+     */
+    private final class VertexBuilder {
+
+        private long fSrcTime = Long.MAX_VALUE;
+        private int fSrcAttr;
+        private int fDst;
+        private long fDur;
+
+        public long getTime() {
+            return fSrcTime;
+        }
+
+        public TimeGraphVertex build() {
+            return new TimeGraphVertex(fSrcAttr, fDst, fSrcTime, fDur);
+        }
+
+    }
 
     private ITmfTimestamp fSafeTime;
+
+    private final Map<String, VertexBuilder> fLinks = new HashMap<>();
+
+    private final Collection<@NonNull TimeGraphVertex> fCollection = new TreeSet<>();
 
     /**
      * A map of tid/stacks of timestamps
      */
-    private Map<Integer, Stack<Long>> fStack = new TreeMap<>();
+    private final Map<Integer, Stack<Long>> fStack = new TreeMap<>();
 
     /**
      * Constructor
@@ -92,18 +123,28 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
 
     @Override
     protected @Nullable ITmfStateValue functionEntry(@NonNull ITmfEvent event) {
-        if (event instanceof TraceEventEvent && 'B' == (((TraceEventEvent) event).getField().getPhase())) {
+        if (event instanceof TraceEventEvent && isEntry(event)) {
             return TmfStateValue.newValueString(event.getName());
         }
         return null;
     }
 
+    private static boolean isEntry(ITmfEvent event) {
+        char phase = ((TraceEventEvent) event).getField().getPhase();
+        return 'B' == phase || phase == 's';
+    }
+
     @Override
     protected @Nullable ITmfStateValue functionExit(@NonNull ITmfEvent event) {
-        if (event instanceof TraceEventEvent && 'E' == (((TraceEventEvent) event).getField().getPhase())) {
+        if (event instanceof TraceEventEvent && isExit(event)) {
             return TmfStateValue.newValueString(event.getName());
         }
         return null;
+    }
+
+    private static boolean isExit(ITmfEvent event) {
+        char phase = ((TraceEventEvent) event).getField().getPhase();
+        return 'E' == phase || 'f' == phase;
     }
 
     @Override
@@ -133,10 +174,40 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
         char ph = traceEvent.getField().getPhase();
         switch (ph) {
         case 'B':
-            ITmfStateValue functionBeginName = functionEntry(event);
-            if (functionBeginName != null) {
-                startHandle(event, ss, timestamp, processName, functionBeginName);
+            handleStart(event, ss, timestamp, processName);
+            break;
+        case 's': {
+            int attr = handleStart(event, ss, timestamp, processName);
+            String id = traceEvent.getField().getId();
+            VertexBuilder link = fLinks.get(id);
+            if (link != null) {
+                if (link.getTime() == Long.MAX_VALUE) {
+                    link.fDur = 0;
+                    link.fSrcTime = traceEvent.getTimestamp().toNanos();
+                    link.fDst = attr;
+                    fCollection.add(link.build());
+                    VertexBuilder value = new VertexBuilder();
+                    value.fSrcAttr = attr;
+                    fLinks.put(id, value);
+                } else {
+                    /*
+                     * start time = time
+                     *
+                     * end time = traceEvent.getTimestamp().toNanos()
+                     */
+                    link.fDur = traceEvent.getTimestamp().toNanos() - link.fSrcTime;
+                    link.fDst = attr;
+                    fCollection.add(link.build());
+                    VertexBuilder value = new VertexBuilder();
+                    value.fSrcAttr = attr;
+                    fLinks.put(id, value);
+                }
+            } else {
+                VertexBuilder newLink = new VertexBuilder();
+                newLink.fSrcAttr = attr;
+                fLinks.put(id, newLink);
             }
+        }
             break;
 
         case 'X':
@@ -146,24 +217,47 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
             }
             break;
 
-        case 'E':
-            /* Check if the event is a function exit */
-            ITmfStateValue functionExitState = functionExit(event);
-            if (functionExitState != null) {
-                endHandle(event, ss, timestamp, processName);
+        case 'E': {
+            handleEnd(event, ss, timestamp, processName);
+            break;
+        }
+        case 'f': {
+            handleEnd(event, ss, timestamp, processName);
+            {
+                String id = traceEvent.getField().getId();
+                VertexBuilder link = fLinks.get(id);
+                if (link != null) {
+                    if (link.getTime() == Long.MAX_VALUE) {
+                        link.fSrcTime = traceEvent.getTimestamp().toNanos();
+                    }
+                }
             }
             break;
-
+        }
         case 'b':
-            ITmfStateValue functionStartName = functionEntry(event);
-            if (functionStartName != null) {
-                startHandle(event, ss, timestamp, processName, functionStartName);
-            }
+            handleStart(event, ss, timestamp, processName);
             break;
         // $CASES-OMITTED$
         default:
             return;
         }
+    }
+
+    private int handleStart(ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName) {
+        ITmfStateValue functionBeginName = functionEntry(event);
+        if (functionBeginName != null) {
+            return startHandle(event, ss, timestamp, processName, functionBeginName);
+        }
+        return -1;
+    }
+
+    private int handleEnd(ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName) {
+        /* Check if the event is a function exit */
+        ITmfStateValue functionExitState = functionExit(event);
+        if (functionExitState != null) {
+            return endHandle(event, ss, timestamp, processName);
+        }
+        return -1;
     }
 
     /**
@@ -209,7 +303,7 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
 
     }
 
-    private void startHandle(@NonNull ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName, ITmfStateValue functionEntryName) {
+    private int startHandle(@NonNull ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName, ITmfStateValue functionEntryName) {
         int processQuark = ss.getQuarkAbsoluteAndAdd(PROCESSES, processName);
 
         String threadName = getThreadName(event);
@@ -222,9 +316,12 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
         int callStackQuark = ss.getQuarkRelativeAndAdd(threadQuark, CALL_STACK);
         ITmfStateValue value = functionEntryName;
         ss.pushAttribute(timestamp, value, callStackQuark);
+        // FIXME: BIG FAT SMELLY HACK
+        return ss.queryOngoingState(callStackQuark).unboxInt() + callStackQuark;
+
     }
 
-    private void endHandle(@NonNull ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName) {
+    private int endHandle(@NonNull ITmfEvent event, ITmfStateSystemBuilder ss, long timestamp, String processName) {
         String pName = processName;
 
         if (pName == null) {
@@ -237,6 +334,8 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
         }
         int quark = ss.getQuarkAbsoluteAndAdd(PROCESSES, pName, threadName, CALL_STACK);
         ss.popAttribute(timestamp, quark);
+        // FIXME: BIG FAT SMELLY HACK
+        return ss.queryOngoingState(quark).unboxInt() + quark;
     }
 
     @Override
@@ -253,5 +352,9 @@ public class ChromiumCallStackProvider extends CallStackStateProvider {
             }
         }
         super.done();
+    }
+
+    protected Collection<@NonNull TimeGraphVertex> getLinks() {
+        return fCollection;
     }
 }

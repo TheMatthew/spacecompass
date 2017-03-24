@@ -2,6 +2,7 @@ package org.eclipse.tracecompass.internal.analysis.chromium.core.callstack;
 
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 
+import java.util.Collection;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNull;
@@ -9,6 +10,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.tracecompass.analysis.chromium.core.trace.ChromiumTrace;
 import org.eclipse.tracecompass.tmf.core.analysis.requirements.TmfAbstractAnalysisRequirement;
 import org.eclipse.tracecompass.tmf.core.callstack.CallStackAnalysis;
+import org.eclipse.tracecompass.tmf.core.callstack.TimeGraphVertex;
 import org.eclipse.tracecompass.tmf.core.exceptions.TmfAnalysisException;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
@@ -45,7 +47,12 @@ public class ChromiumCallstackAnalysis extends CallStackAnalysis {
 
     @Override
     protected ITmfStateProvider createStateProvider() {
-        return new ChromiumCallStackProvider(checkNotNull(getTrace()));
+        ChromiumCallStackProvider chromiumCallStackProvider = new ChromiumCallStackProvider(checkNotNull(getTrace()));
+        Collection<@NonNull TimeGraphVertex> links = chromiumCallStackProvider.getLinks();
+        if (links != null && getCallstackLinks().isEmpty()) {
+            setLinks(links);
+        }
+        return chromiumCallStackProvider;
     }
 
     @Override
