@@ -2,6 +2,7 @@ package org.eclipse.tracecompass.internal.analysis.chromium.core.counters;
 
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.internal.analysis.chromium.core.event.TraceEventEvent;
@@ -43,7 +44,7 @@ public class ChromiumCounterProvider extends AbstractTmfStateProvider {
             return;
         }
         TraceEventEvent traceEvent = (TraceEventEvent) event;
-        if (!traceEvent.getType().equals(TraceEventLookup.get('C'))) {
+        if (!Objects.equals(traceEvent.getType(), (TraceEventLookup.get('C')))) {
             return;
         }
         ITmfStateSystemBuilder ssb = getStateSystemBuilder();
