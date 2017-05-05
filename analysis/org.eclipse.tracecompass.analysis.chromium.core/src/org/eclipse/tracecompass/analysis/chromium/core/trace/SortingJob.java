@@ -25,23 +25,27 @@ final class SortingJob extends Job {
             line = string;
             String key = "\"ts\":"; //$NON-NLS-1$
             int indexOf = string.indexOf(key);
-            if (indexOf == -1) {
-                throw new IllegalStateException("invalid string " + string); //$NON-NLS-1$
-            }
-            int index = indexOf + key.length();
-            int end = string.indexOf(',', index);
-            String number = string.substring(index, end);
-            ts = 0;
-            for (char s : number.toCharArray()) {
-                if (s == '.') {
-                    continue;
+            if (indexOf < 0) {
+                ts = -1;
+            } else {
+                int index = indexOf + key.length();
+                int end = string.indexOf(',', index);
+                if (end == -1) {
+                    end = string.indexOf('}', index);
                 }
-                if (s < '0' || s > '9') {
-                    throw new IllegalStateException("invalid string " + number); //$NON-NLS-1$
+                String number = string.substring(index, end).trim();
+                ts = 0;
+                for (char s : number.toCharArray()) {
+                    if (s == '.') {
+                        continue;
+                    }
+                    if (s < '0' || s > '9') {
+                        throw new IllegalStateException("invalid string " + number); //$NON-NLS-1$
+                    }
+                    ts = (ts * 10) + (s - '0');
                 }
-                ts = (ts * 10) + (s - '0');
+                pos = i;
             }
-            pos = i;
         }
 
         long ts;
