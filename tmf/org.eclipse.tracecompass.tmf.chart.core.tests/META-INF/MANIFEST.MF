@@ -11,4 +11,5 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: org.eclipse.core.runtime,
  org.junit,
  org.eclipse.tracecompass.common.core,
- org.eclipse.tracecompass.tmf.chart.core
+ org.eclipse.tracecompass.tmf.chart.core,
+ org.eclipse.jdt.annotation

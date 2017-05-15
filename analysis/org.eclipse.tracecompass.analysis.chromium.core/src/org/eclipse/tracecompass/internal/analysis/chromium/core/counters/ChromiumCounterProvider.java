@@ -10,6 +10,7 @@ import org.eclipse.tracecompass.internal.analysis.chromium.core.event.TraceEvent
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystemBuilder;
 import org.eclipse.tracecompass.statesystem.core.statevalue.TmfStateValue;
 import org.eclipse.tracecompass.tmf.core.event.ITmfEvent;
+import org.eclipse.tracecompass.tmf.core.event.ITmfEventType;
 import org.eclipse.tracecompass.tmf.core.statesystem.AbstractTmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
@@ -22,6 +23,7 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
  */
 public class ChromiumCounterProvider extends AbstractTmfStateProvider {
 
+    private static final ITmfEventType COUNT_EVENT = TraceEventLookup.get('C');
     private static final @NonNull String ID = "org.eclipse.tracecompass.internal.analysis.chromium.core.counters.id";
 
     public ChromiumCounterProvider(@NonNull ITmfTrace trace) {
@@ -44,7 +46,7 @@ public class ChromiumCounterProvider extends AbstractTmfStateProvider {
             return;
         }
         TraceEventEvent traceEvent = (TraceEventEvent) event;
-        if (!Objects.equals(traceEvent.getType(), (TraceEventLookup.get('C')))) {
+        if (!Objects.equals(traceEvent.getType(), COUNT_EVENT)) {
             return;
         }
         ITmfStateSystemBuilder ssb = getStateSystemBuilder();

@@ -1,32 +1,27 @@
 package org.eclipse.tracecompass.internal.analysis.chromium.core.counters.ui;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.tracecompass.internal.analysis.chromium.core.counters.ChromiumCounterAnalysis;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
-import org.eclipse.tracecompass.statesystem.core.StateSystemUtils;
-import org.eclipse.tracecompass.statesystem.core.exceptions.AttributeNotFoundException;
 import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedException;
 import org.eclipse.tracecompass.statesystem.core.interval.ITmfStateInterval;
 import org.eclipse.tracecompass.tmf.core.analysis.IAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
-import org.eclipse.tracecompass.tmf.core.util.Pair;
 import org.eclipse.tracecompass.tmf.ui.viewers.xycharts.TmfXYChartViewer;
 import org.eclipse.tracecompass.tmf.ui.viewers.xycharts.linecharts.TmfCommonXLineChartViewer;
 import org.eclipse.tracecompass.tmf.ui.views.TmfChartView;
 import org.swtchart.Chart;
 import org.swtchart.ILineSeries;
 import org.swtchart.ILineSeries.PlotSymbolType;
-import org.swtchart.ISeries.SeriesType;
+import org.swtchart.ISeries;
 import org.swtchart.ISeriesSet;
 import org.swtchart.LineStyle;
 
@@ -34,11 +29,64 @@ public class CounterChartView extends TmfChartView {
 
     public static final String ID = "org.eclipse.tracecompass.internal.analysis.chromium.core.counters.ui.counter"; //$NON-NLS-1$
 
+    private boolean fDelta = false;
+    private boolean fLog = false;
+
     public CounterChartView() {
         super(ID);
     }
 
-    private boolean fDelta = true;
+    @Override
+    public void createPartControl(Composite parent) {
+        super.createPartControl(parent);
+        IMenuManager mm = getViewSite().getActionBars().getMenuManager();
+        getViewSite().getActionBars().getToolBarManager().add(new Action("Log", SWT.TOGGLE) {
+
+            @Override
+            public void run() {
+                fLog = !fLog;
+                TmfXYChartViewer chart = getChartViewer();
+                if (chart != null) {
+                    chart.windowRangeUpdated(null);
+                }
+            }
+
+            @Override
+            public boolean isChecked() {
+                return fLog;
+            }
+        });
+        mm.add(new Action("Delta", SWT.RADIO) {
+            @Override
+            public void run() {
+                fDelta = true;
+                TmfXYChartViewer chart = getChartViewer();
+                if (chart != null) {
+                    chart.windowRangeUpdated(null);
+                }
+            }
+
+            @Override
+            public boolean isChecked() {
+                return fDelta;
+            }
+        });
+        mm.add(new Action("Cumulative", SWT.RADIO) {
+            @Override
+            public void run() {
+                fDelta = false;
+                TmfXYChartViewer chart = getChartViewer();
+                if (chart != null) {
+                    chart.windowRangeUpdated(null);
+                }
+            }
+
+            @Override
+            public boolean isChecked() {
+                return !fDelta;
+            }
+        });
+    }
 
     @Override
     protected TmfXYChartViewer createChartViewer(Composite parent) {
@@ -46,7 +94,7 @@ public class CounterChartView extends TmfChartView {
 
             @Override
             protected void updateData(long start, long end, int points, IProgressMonitor monitor) {
-                int nb = points / 5;
+                int nb = points / 10;
                 IAnalysisModule am = getTrace().getAnalysisModule(ChromiumCounterAnalysis.ID);
                 if (!(am instanceof TmfStateSystemAnalysisModule)) {
                     return;
@@ -57,81 +105,66 @@ public class CounterChartView extends TmfChartView {
                     return;
                 }
                 List<Integer> values = ss.getQuarks("*", "*"); //$NON-NLS-1$ //$NON-NLS-2$
-                Map<String, Pair<double[], double[]>> ySeries = new LinkedHashMap<>();
                 double[] xAxis = getXAxis(start, end, nb);
+                setXAxis(xAxis);
                 for (Integer value : values) {
                     String fullAttributePath = ss.getFullAttributePath(value);
-                    try {
-                        List<@NonNull ITmfStateInterval> vals = StateSystemUtils.queryHistoryRange(ss, value, start, end, nb, monitor);
 
-                        List<Double> xVals = new ArrayList<>();
-                        List<Double> yVals = new ArrayList<>();
-                        for (int i = 0; i < nb; i++) {
-                            double xpos = xAxis[i];
-                            double val = find(xpos, vals);
-                            if (val != Double.NaN) {
-                                xVals.add(xpos);
-                                yVals.add(val);
-                            }
-                        }
-                        if (!xVals.isEmpty()) {
-                            double[] x = new double[xVals.size()];
-                            double[] y = new double[yVals.size()];
-                            x[0] = xVals.get(0);
-                            y[0] = yVals.get(0);
-                            int skip=0;
-                            for (int i = 1; i < xVals.size(); i++) {
-                                x[i] = xVals.get(i);
-                                y[i] = Math.abs(yVals.get(i) - (fDelta ? yVals.get(i - 1) : 0));
-                                if( y[0] == y[i]) {
-                                    skip++;
+                    try {
+                        double[] yVals = new double[xAxis.length];
+                        ITmfStateInterval interval = ss.querySingleState(Math.max(ss.getStartTime(), (long) (start - xAxis[1])), value);
+                        for (int i = 0; i < xAxis.length; i++) {
+                            double xpos = xAxis[i] + start;
+                            if (fDelta) {
+                                if (interval.getEndTime() > xpos) {
+                                    yVals[i] = 0.0;
+                                } else {
+                                    double prev = interval.getStateValue().unboxDouble();
+                                    interval = ss.querySingleState((long) xpos, value);
+                                    yVals[i] = interval.getStateValue().unboxDouble() - prev;
+                                }
+                            } else {
+                                if (interval.getEndTime() > xpos) {
+                                    yVals[i] = interval.getStateValue().unboxDouble();
+                                } else {
+                                    interval = ss.querySingleState((long) xpos, value);
+                                    yVals[i] = interval.getStateValue().unboxDouble();
                                 }
                             }
-                            if( skip < xVals.size()-1) {
-                                ySeries.put(fullAttributePath, new Pair<>(x, y));
-                            }
+                            yVals[i] = Math.max(0.01, yVals[i]);
                         }
-                    } catch (AttributeNotFoundException | StateSystemDisposedException e) {
-                        // TODO Auto-generated catch block
+                        setSeries(fullAttributePath, yVals);
+                    } catch (StateSystemDisposedException e) {
                         e.printStackTrace();
                     }
                 }
-                if (ySeries.isEmpty()) {
-                    return;
-                }
-                Display.getDefault().asyncExec(() -> {
-                    Chart chart = getSwtChart();
-                    chart.getLegend().setPosition(SWT.LEFT);
+                Display.getDefault().asyncExec(() -> updateDisplay());
+            }
 
-                    ISeriesSet seriesSet = chart.getSeriesSet();
-                    for (Entry<String, Pair<double[], double[]>> ySerie : ySeries.entrySet()) {
-                        String name = ySerie.getKey();
-                        ILineSeries serie = (ILineSeries) seriesSet.getSeries(name);
-                        if (serie == null) {
-                            serie = (ILineSeries) seriesSet.createSeries(SeriesType.LINE, name);
-                        }
-                        serie.setXSeries(ySerie.getValue().getFirst());
-                        serie.setYSeries(ySerie.getValue().getSecond());
-                        serie.setLineStyle(LineStyle.SOLID);
-                        serie.setLineWidth(2);
-                        serie.setSymbolType(getSymbol(name));
+            @Override
+            protected void updateDisplay() {
+                super.updateDisplay();
+                Chart chart = getSwtChart();
+                chart.getLegend().setPosition(SWT.LEFT);
+
+                ISeriesSet seriesSet = chart.getSeriesSet();
+                for (ISeries serie : seriesSet.getSeries()) {
+                    if (serie instanceof ILineSeries) {
+                        ILineSeries lineSeries = (ILineSeries) serie;
+                        lineSeries.setLineStyle(LineStyle.SOLID);
+                        lineSeries.setLineWidth(2);
+                        lineSeries.setSymbolType(getSymbol(lineSeries.getId()));
                     }
-                    chart.getAxisSet().adjustRange();
-                });
+                }
+                chart.getAxisSet().adjustRange();
+                chart.getAxisSet().getYAxis(0).adjustRange();
+                chart.getAxisSet().getYAxis(0).enableLogScale(fLog);
+
             }
 
             private PlotSymbolType getSymbol(String name) {
                 PlotSymbolType @NonNull [] vals = PlotSymbolType.values();
                 return vals[Math.abs(name.hashCode() % vals.length)];
-            }
-
-            private double find(double xPos, List<@NonNull ITmfStateInterval> vals) {
-                for (ITmfStateInterval val : vals) {
-                    if (val.getStartTime() <= xPos && val.getEndTime() > xPos) {
-                        return val.getStateValue().unboxDouble();
-                    }
-                }
-                return 0;
             }
 
         };

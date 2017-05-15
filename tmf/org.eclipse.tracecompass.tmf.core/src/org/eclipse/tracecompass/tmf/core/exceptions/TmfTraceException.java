@@ -28,7 +28,8 @@ public class TmfTraceException extends Exception {
     /**
      * Constructor
      *
-     * @param errMsg the error message
+     * @param errMsg
+     *            the error message
      */
     public TmfTraceException(String errMsg) {
         super(errMsg);
@@ -37,10 +38,20 @@ public class TmfTraceException extends Exception {
     /**
      * Constructor
      *
-     * @param errMsg the error message
-     * @param cause the error cause (<code>null</code> is permitted which means no cause is available)
+     * @param errMsg
+     *            the error message
+     * @param cause
+     *            the error cause (<code>null</code> is permitted which means no
+     *            cause is available)
      */
     public TmfTraceException(String errMsg, Throwable cause) {
         super(errMsg, cause);
+    }
+
+    /**
+     * @since 2.3
+     */
+    public TmfTraceException(Throwable e) {
+        super(e);
     }
 }

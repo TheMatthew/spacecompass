@@ -9,5 +9,6 @@ Bundle-Activator: org.eclipse.tracecompass.internal.datastore.core.Activator
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Require-Bundle: org.eclipse.core.runtime,
- org.eclipse.tracecompass.common.core
+ org.eclipse.tracecompass.common.core,
+ org.eclipse.jdt.annotation
 Export-Package: org.eclipse.tracecompass.internal.datastore.core;x-internal:=true
