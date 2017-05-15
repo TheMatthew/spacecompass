@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IContainer;
@@ -281,7 +282,7 @@ public abstract class TmfCommonProjectElement extends TmfProjectModelElement {
      */
     public ITmfTrace getTrace() {
         for (ITmfTrace trace : TmfTraceManager.getInstance().getOpenedTraces()) {
-            if (trace.getResource().equals(getResource())) {
+            if (Objects.equals(trace.getResource(), getResource())) {
                 return trace;
             }
         }
@@ -425,8 +426,8 @@ public abstract class TmfCommonProjectElement extends TmfProjectModelElement {
      */
     public List<TmfAnalysisElement> getAvailableAnalysis() {
         return getChildElementViews().getChildren().stream()
-            .map(elem -> (TmfAnalysisElement) elem)
-            .collect(Collectors.toList());
+                .map(elem -> (TmfAnalysisElement) elem)
+                .collect(Collectors.toList());
     }
 
     // ------------------------------------------------------------------------

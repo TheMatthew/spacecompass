@@ -13,7 +13,8 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jface,
  org.eclipse.tracecompass.common.core,
  org.eclipse.tracecompass.tmf.chart.core,
- org.eclipse.tracecompass.tmf.core
+ org.eclipse.tracecompass.tmf.core,
+ org.eclipse.jdt.annotation
 Export-Package: org.eclipse.tracecompass.internal.provisional.tmf.chart.ui.chart;x-internal:=true,
  org.eclipse.tracecompass.internal.tmf.chart.ui;x-internal:=true,
  org.eclipse.tracecompass.internal.tmf.chart.ui.aggregator;x-internal:=true,
