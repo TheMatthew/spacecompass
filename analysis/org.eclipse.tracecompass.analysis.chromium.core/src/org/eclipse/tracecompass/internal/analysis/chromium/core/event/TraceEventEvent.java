@@ -100,24 +100,25 @@ public class TraceEventEvent extends TmfEvent implements ITmfSourceLookup {
         try {
             root = new JSONObject(fieldsString);
             long ts = 0;
-            Double tso = root.optDouble(ITraceEventConstants.TIMESTAMP);
+
+            Double tso = optDouble(root, ITraceEventConstants.TIMESTAMP);
             if (Double.isFinite(tso)) {
                 ts = (long) (tso * MICRO_TO_NANO);
             }
-            char phase = root.optString(ITraceEventConstants.PHASE, "I").charAt(0); //$NON-NLS-1$
-            String name = String.valueOf(root.optString(ITraceEventConstants.NAME, 'E' == phase ? "exit" : "unknown")); //$NON-NLS-1$ //$NON-NLS-2$
-            Integer tid = root.optInt(ITraceEventConstants.TID, Integer.MIN_VALUE);
+            char phase = optString(root, ITraceEventConstants.PHASE, "I").charAt(0); //$NON-NLS-1$
+            String name = String.valueOf(optString(root,ITraceEventConstants.NAME, 'E' == phase ? "exit" : "unknown")); //$NON-NLS-1$ //$NON-NLS-2$
+            Integer tid = optInt(root, ITraceEventConstants.TID);
             if (tid == Integer.MIN_VALUE) {
                 tid = null;
             }
             Object pid = root.opt(ITraceEventConstants.PID);
-            Double duration = root.optDouble(ITraceEventConstants.DURATION);
+            Double duration = optDouble(root, ITraceEventConstants.DURATION);
             if (Double.isFinite(duration)) {
                 duration = (duration * MICRO_TO_NANO);
             }
-            String category = root.optString(ITraceEventConstants.CATEGORY);
-            String id = root.optString(ITraceEventConstants.ID);
-            JSONObject args = root.optJSONObject(ITraceEventConstants.ARGS);
+            String category = optString(root, ITraceEventConstants.CATEGORY);
+            String id = optString(root, ITraceEventConstants.ID);
+            JSONObject args = optJSONObject(root, ITraceEventConstants.ARGS);
             if (args != null) {
                 Iterator<?> keys = args.keys();
                 while (keys.hasNext()) {
@@ -143,6 +144,26 @@ public class TraceEventEvent extends TmfEvent implements ITmfSourceLookup {
             // invalid, return null and it will fail
         }
         return null;
+    }
+
+    private static double optDouble(JSONObject root, String key) {
+        return root.has(key) ? root.optDouble(key) : Double.NaN;
+    }
+
+    private static int optInt(JSONObject root, String key) {
+        return root.has(key) ? root.optInt(key) : Integer.MIN_VALUE;
+    }
+
+    private static JSONObject optJSONObject(JSONObject root, String key){
+        return root.has(key) ? root.optJSONObject(key) : null;
+    }
+
+    private static String optString(JSONObject root, String key, String defaultValue) {
+        return root.has(key) ? (String) root.optString(key) : defaultValue;
+    }
+
+    private static String optString(JSONObject root, String key) {
+        return optString(root, key, null);
     }
 
     /**
