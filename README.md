@@ -1,3 +1,10 @@
+Good News Everybody
+===================
+
+This project will now be archived... all the features are part of Eclipse Trace Compass (www.tracecompass.org) in the incubator. The only feature left to work on would be the splash screen. I want to thank all those who used this.
+
+Cheers!
+
 Eclipse Trace Compass
 =====================
 
